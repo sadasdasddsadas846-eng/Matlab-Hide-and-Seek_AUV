@@ -11,6 +11,9 @@ end
 
 rng(seed);
 
+config.radar = radar_params();
+config.radar.theta0 = rand(1) * 2 * pi;
+
 paramsA = auv_agent_params('A');
 paramsB = auv_agent_params('B');
 
@@ -21,6 +24,8 @@ paramsB.targetSpeed = config.agentBSpeed;
 
 stateA = paramsA.initialState(:);
 stateB = paramsB.initialState(:);
+stateA(1) = stateA(1) + randn(1) * config.initialNoiseSigma;
+stateA(2) = stateA(2) + randn(1) * config.initialNoiseSigma;
 
 trajA = zeros(ceil(config.timeout / config.dt) + 1, 6);
 trajB = zeros(size(trajA));
@@ -99,4 +104,5 @@ result.aMode = aMode;
 result.bMode = bMode;
 result.aModeHistory = aModeHistory;
 result.bModeHistory = bModeHistory;
+result.radarTheta0 = config.radar.theta0;
 end

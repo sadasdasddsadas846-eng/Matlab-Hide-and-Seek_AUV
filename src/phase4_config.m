@@ -31,4 +31,6 @@ config.safeGapBias = 0.25;                  % rad, design choice
 
 config.minSeparation = 0.0;                 % m, design choice
 config.maxRuns = 50;                        % runs, design choice
+config.initialNoiseSigma = 0.25;            % m, design choice
+config.initialNoiseBound = 3.0 * config.initialNoiseSigma; % m, design choice
 end

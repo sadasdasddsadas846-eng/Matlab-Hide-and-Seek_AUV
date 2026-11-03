@@ -65,5 +65,32 @@ classdef test_phase4_scenario < matlab.unittest.TestCase
             testCase.verifyEqual(first.times, second.times, 'AbsTol', 1e-12);
             testCase.verifyEqual(first.detectionCounts, second.detectionCounts);
         end
+
+        function sameSeedProducesIdenticalInitialConditions(testCase)
+            config = phase4_config();
+            first = phase4_run_trial(17, config);
+            second = phase4_run_trial(17, config);
+            testCase.verifyEqual(first.stateA(1, :), second.stateA(1, :), 'AbsTol', 1e-12);
+            testCase.verifyEqual(first.stateB(1, :), second.stateB(1, :), 'AbsTol', 1e-12);
+            testCase.verifyEqual(first.outcome, second.outcome);
+        end
+
+        function differentSeedsProduceDifferentInitialConditions(testCase)
+            config = phase4_config();
+            first = phase4_run_trial(17, config);
+            second = phase4_run_trial(19, config);
+            testCase.verifyNotEqual(first.stateA(1, 1), second.stateA(1, 1));
+            testCase.verifyNotEqual(first.stateA(1, 2), second.stateA(1, 2));
+            testCase.verifyNotEqual(first.radarTheta0, second.radarTheta0);
+        end
+
+        function initialNoiseStaysWithinSigmaBound(testCase)
+            config = phase4_config();
+            result = phase4_run_trial(23, config);
+            initialXDelta = abs(result.stateA(1, 1) - config.agentAStart(1));
+            initialYDelta = abs(result.stateA(1, 2) - config.agentAStart(2));
+            testCase.verifyLessThanOrEqual(initialXDelta, config.initialNoiseBound);
+            testCase.verifyLessThanOrEqual(initialYDelta, config.initialNoiseBound);
+        end
     end
 end
