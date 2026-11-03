@@ -1,4 +1,4 @@
-function phase2_two_agents()
+function results = phase2_two_agents()
 % PHASE2_TWO_AGENTS runs a simple side-by-side two-agent plain MATLAB demo.
 % Agent A is the stealth drone and Agent B is the seeker drone.
 % Both use the same heading+speed autopilot from Phase 1, but with different
@@ -59,6 +59,9 @@ ylabel('y (m)');
 title('Phase 2 plain MATLAB two-agent test');
 
 saveas(gcf, 'phase2_two_agents_figure.png');
+
+results = struct('stateA', stateA, 'stateB', stateB, ...
+    'finalA', stateA(end, :), 'finalB', stateB(end, :));
 
 fprintf('Plain MATLAB two-agent simulation complete.\n');
 fprintf('Agent A final position: x = %.2f m, y = %.2f m, psi = %.2f deg\n', ...

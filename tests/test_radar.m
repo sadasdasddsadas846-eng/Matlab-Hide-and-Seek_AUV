@@ -4,7 +4,7 @@ classdef test_radar < matlab.unittest.TestCase
     methods (TestClassSetup)
         function addSrcToPath(testCase)
             repoRoot = fileparts(fileparts(mfilename('fullpath')));
-            addpath(fullfile(repoRoot, 'src'));
+            testCase.applyFixture(matlab.unittest.fixtures.PathFixture(fullfile(repoRoot, 'src')));
         end
     end
 
