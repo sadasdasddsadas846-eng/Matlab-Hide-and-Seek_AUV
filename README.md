@@ -3,6 +3,7 @@
 Proyek simulasi hide-and-seek menggunakan underwater drone (AUV/ROV) dengan ROS 2 dan Gazebo.
 
 ## Struktur Proyek
+## GOKIL LU NDRONG
 
 - **simulation/** - Simulasi lingkungan bawah air (Gazebo)
 - **navigation/** - Navigasi, path planning, dan obstacle avoidance
