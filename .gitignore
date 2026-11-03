@@ -1,3 +1,29 @@
-*_figure.png
-slprj/
-*.slxc
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ROS 2 build
+build/
+install/
+log/
+
+# Gazebo
+*.log
+
+# MATLAB (legacy)
+*.asv
+*.m~
+
