@@ -54,3 +54,4 @@ private:
     float Temperature = 18.0f;
     float ElapsedTime = 0.0f;
 };
+

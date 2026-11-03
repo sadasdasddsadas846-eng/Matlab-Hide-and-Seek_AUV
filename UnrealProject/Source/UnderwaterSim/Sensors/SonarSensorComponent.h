@@ -98,3 +98,4 @@ private:
     float TimeSinceLastScan = 0.0f;
     TArray<FSonarDetection> LatestDetections;
 };
+

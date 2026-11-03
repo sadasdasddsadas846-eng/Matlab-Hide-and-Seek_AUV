@@ -54,3 +54,4 @@ $$M \dot{\nu} + C(\nu)\nu + D(\nu)\nu + g(\eta) = \tau + \tau_{current}$$
 - **Thruster Layout (BlueROV2 Heavy - 6 Thruster):**
   - **4 Thruster Horizontal:** Terpasang pada sudut 45 derajat di 4 sudut drone, memungkinkan pergerakan bebas (*holonomic omnidirectional*) pada sumbu Surge ($X$), Sway ($Y$), dan rotasi Yaw.
   - **2 Thruster Vertikal:** Terpasang sejajar sumbu vertikal untuk kontrol kedalaman (Heave / $Z$).
+

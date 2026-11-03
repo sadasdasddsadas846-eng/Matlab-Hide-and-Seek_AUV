@@ -78,3 +78,4 @@ void UROS2BridgeComponent::PublishOdometry()
     // ROS Z = UE Z (Up)
     // (This is formatted ready for serialization into nav_msgs/Odometry)
 }
+

@@ -34,3 +34,4 @@ Dokumen ini menjelaskan langkah-langkah verifikasi dan validasi untuk modul simu
 2. Verifikasi state awal: Ronde berada pada fase `HidingPhase` selama 15 detik.
 3. Setelah 15 detik, fase otomatis berganti menjadi `SeekingPhase`.
 4. Jika jarak Seeker ke Hider kurang dari $2.5\text{ meter}$, game mengumumkan `SeekerWon` dan menghentikan timer.
+

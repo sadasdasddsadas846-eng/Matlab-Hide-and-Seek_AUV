@@ -100,3 +100,4 @@ void AHideAndSeekGameMode::CheckCaptureCondition()
         UE_LOG(LogUnderwaterSim, Log, TEXT("Match Over: SEEKER CAPTURED HIDER at distance %.2fm!"), CurrentDistanceBetweenDrones);
     }
 }
+

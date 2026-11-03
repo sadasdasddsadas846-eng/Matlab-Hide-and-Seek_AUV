@@ -43,3 +43,4 @@ void UDepthSensorComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
         OnDepthUpdated.Broadcast(CurrentDepth, CurrentPressure, Temperature);
     }
 }
+

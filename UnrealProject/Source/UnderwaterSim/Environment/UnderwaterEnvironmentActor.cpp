@@ -60,3 +60,4 @@ void AUnderwaterEnvironmentActor::UpdatePostProcessSettings()
     Settings.bOverride_DepthOfFieldFocalDistance = true;
     Settings.DepthOfFieldFocalDistance = MaxVisualRangeMeters * 100.0f;
 }
+

@@ -98,3 +98,4 @@ void USonarSensorComponent::PerformScan()
 
     OnSonarScanComplete.Broadcast(LatestDetections);
 }
+

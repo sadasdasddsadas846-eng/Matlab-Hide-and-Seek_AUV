@@ -40,3 +40,4 @@ Setiap drone memiliki namespace tersendiri (misal: `/seeker` dan `/hider`).
 | `/<drone_id>/dvl` | `geometry_msgs/msg/TwistWithCovarianceStamped` | 10 Hz | Kecepatan relatif terhadap dasar laut |
 | `/<drone_id>/sonar/scan`| `underwater_interfaces/msg/SonarScan` | 10 Hz | Hasil pemindaian acoustic sonar (jarak & sudut) |
 | `/<drone_id>/camera/image_raw`| `sensor_msgs/msg/Image` | 15-30 Hz | Frame kamera bawah laut (RGB) |
+

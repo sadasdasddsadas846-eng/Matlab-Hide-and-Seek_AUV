@@ -52,3 +52,4 @@ private:
     UPROPERTY()
     UPrimitiveComponent* PhysicsComponent = nullptr;
 };
+

@@ -70,3 +70,4 @@ void UDVLSensorComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
         OnDVLUpdated.Broadcast(MeasuredVelocityBody, MeasuredAltitude, bHasBottomLock, Correlation);
     }
 }
+

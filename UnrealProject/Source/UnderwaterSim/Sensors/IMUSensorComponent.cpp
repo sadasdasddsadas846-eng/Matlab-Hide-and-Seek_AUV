@@ -74,3 +74,4 @@ void UIMUSensorComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
         OnIMUMeasurementUpdated.Broadcast(LatestData);
     }
 }
+
