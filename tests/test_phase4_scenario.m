@@ -31,6 +31,23 @@ classdef test_phase4_scenario < matlab.unittest.TestCase
             testCase.verifyGreaterThanOrEqual(metrics.minSeparation, 0.0);
         end
 
+        function finalMetricsMatchLastStateAndAreNotAllZero(testCase)
+            config = phase4_config();
+            result = phase4_run_trial(9, config);
+            metrics = phase4_metrics(result);
+            testCase.verifyEqual(metrics.finalA, result.stateA(end, :), 'AbsTol', 1e-12);
+            testCase.verifyFalse(all(result.stateA(end, :) == 0, 'all'));
+            testCase.verifyFalse(all(result.stateB(end, :) == 0, 'all'));
+        end
+
+        function minSeparationMatchesIndependentVectorNorm(testCase)
+            config = phase4_config();
+            result = phase4_run_trial(11, config);
+            metrics = phase4_metrics(result);
+            expectedMin = min(vecnorm(result.stateA(:, 1:2) - result.stateB(:, 1:2), 2, 2));
+            testCase.verifyEqual(metrics.minSeparation, expectedMin, 'AbsTol', 1e-12);
+        end
+
         function bWinsOnDetectionFlagCanTerminateTheRun(testCase)
             config = phase4_config();
             config.bWinsOnDetection = true;

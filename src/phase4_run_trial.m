@@ -27,7 +27,12 @@ trajB = zeros(size(trajA));
 trajA(1, :) = stateA(:).';
 trajB(1, :) = stateB(:).';
 
+aModeHistory = strings(size(trajA, 1), 1);
+bModeHistory = strings(size(trajB, 1), 1);
+
 detectionCount = 0;
+detectionSteps = 0;
+lastDetected = false;
 resultState = 'RUNNING';
 
 for k = 1:(size(trajA, 1) - 1)
@@ -37,18 +42,15 @@ for k = 1:(size(trajA, 1) - 1)
     [bMode, cmdB, bDetect, lastSeen] = phase4_agent_b_policy(stateB, stateA(1:2), config, t);
 
     if bDetect
-        detectionCount = detectionCount + 1;
+        detectionSteps = detectionSteps + 1;
+        if ~lastDetected
+            detectionCount = detectionCount + 1;
+        end
     end
+    lastDetected = bDetect;
 
-    if norm(stateA(1:2) - stateB(1:2)) <= config.captureDistance
-        resultState = 'B_WINS';
-        break;
-    end
-
-    if norm(stateA(1:2) - config.goal(:)) <= config.goalRadius
-        resultState = 'A_WINS';
-        break;
-    end
+    aModeHistory(k) = string(aMode);
+    bModeHistory(k) = string(bMode);
 
     controlA = auv_simple_controller(stateA, cmdA(1), cmdA(2), paramsA);
     controlB = auv_simple_controller(stateB, cmdB(1), cmdB(2), paramsB);
@@ -61,6 +63,18 @@ for k = 1:(size(trajA, 1) - 1)
 
     trajA(k + 1, :) = stateA(:).';
     trajB(k + 1, :) = stateB(:).';
+    aModeHistory(k + 1) = string(aMode);
+    bModeHistory(k + 1) = string(bMode);
+
+    if norm(stateA(1:2) - stateB(1:2)) <= config.captureDistance
+        resultState = 'B_WINS';
+        break;
+    end
+
+    if norm(stateA(1:2) - config.goal(:)) <= config.goalRadius
+        resultState = 'A_WINS';
+        break;
+    end
 
     if t >= config.timeout
         resultState = 'TIMEOUT';
@@ -70,6 +84,8 @@ end
 
 trajA = trajA(1:k + 1, :);
 trajB = trajB(1:k + 1, :);
+aModeHistory = aModeHistory(1:k + 1);
+bModeHistory = bModeHistory(1:k + 1);
 
 result = struct();
 result.outcome = resultState;
@@ -77,7 +93,10 @@ result.stateA = trajA;
 result.stateB = trajB;
 result.time = k * config.dt;
 result.detectionCount = detectionCount;
+result.detectionSteps = detectionSteps;
 result.lastSeen = lastSeen;
 result.aMode = aMode;
 result.bMode = bMode;
+result.aModeHistory = aModeHistory;
+result.bModeHistory = bModeHistory;
 end
