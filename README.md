@@ -1,3 +1,5 @@
+# DENGAN ATAS NAMA ALLAH YANG MAHA PENGASIH LAGI MAHA PENYAYANG
+# KITA SELESAIKAN MODEL INI
 # Underwater Drone Hide-and-Seek
 
 Proyek simulasi hide-and-seek menggunakan underwater drone (AUV/ROV) dengan ROS 2 dan Gazebo.
