@@ -1,0 +1,32 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.3",
+	"Category": "Robotics Simulation",
+	"Description": "Underwater Drone Hide and Seek simulation using Unreal Engine and ROS 2",
+	"Modules": [
+		{
+			"Name": "UnderwaterSim",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"CoreUObject"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "Water",
+			"Enabled": true
+		},
+		{
+			"Name": "Niagara",
+			"Enabled": true
+		},
+		{
+			"Name": "rclUE",
+			"Enabled": true,
+			"Optional": true
+		}
+	]
+}

@@ -1,0 +1,5 @@
+# Request to reset match
+bool random_hider_spawn
+---
+bool success
+string message
