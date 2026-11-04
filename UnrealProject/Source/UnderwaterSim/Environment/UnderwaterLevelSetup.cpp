@@ -162,12 +162,13 @@ void AUnderwaterLevelSetup::SpawnCorals()
     };
 
     const TArray<FCoralPlacement> CoralPlacements = {
-        // Main coral reef cluster — center area, completely flat on seafloor
-        { FVector(0.0f, 0.0f, ArenaFloorZ),             FRotator(0.0f, 0.0f, -90.0f),   1.0f },
-        { FVector(2500.0f, 2000.0f, ArenaFloorZ),       FRotator(0.0f, 60.0f, -90.0f),  0.8f },
-        { FVector(-2500.0f, 2500.0f, ArenaFloorZ),      FRotator(0.0f, 120.0f, -90.0f), 0.9f },
-        { FVector(3000.0f, -2000.0f, ArenaFloorZ),      FRotator(0.0f, 180.0f, -90.0f), 0.85f },
-        { FVector(-2500.0f, -2000.0f, ArenaFloorZ),     FRotator(0.0f, 240.0f, -90.0f), 0.75f },
+        // Main coral reef cluster — flat on seafloor
+        // FRotator(Pitch, Yaw, Roll): Pitch=-90 rotates the tall Z-axis mesh to lie flat
+        { FVector(0.0f, 0.0f, ArenaFloorZ),             FRotator(-90.0f, 0.0f, 0.0f),   1.0f },
+        { FVector(2500.0f, 2000.0f, ArenaFloorZ),       FRotator(-90.0f, 60.0f, 0.0f),  0.8f },
+        { FVector(-2500.0f, 2500.0f, ArenaFloorZ),      FRotator(-90.0f, 120.0f, 0.0f), 0.9f },
+        { FVector(3000.0f, -2000.0f, ArenaFloorZ),      FRotator(-90.0f, 180.0f, 0.0f), 0.85f },
+        { FVector(-2500.0f, -2000.0f, ArenaFloorZ),     FRotator(-90.0f, 240.0f, 0.0f), 0.75f },
     };
 
     int32 CoralIndex = 0;
@@ -207,13 +208,14 @@ void AUnderwaterLevelSetup::SpawnShipwreck()
 
 void AUnderwaterLevelSetup::SpawnSubmarineProp()
 {
-    // Decorative submarine sitting upright and level on the seabed
+    // Decorative submarine sitting upright on the seabed
+    // The _Submarine2 mesh has a baked 90° roll in its geometry, compensate with Roll=-90
     if (SubmarineMesh)
     {
         SpawnStaticMeshActor(
             SubmarineMesh,
             FVector(2000.0f, 3000.0f, ArenaFloorZ + 150.0f),
-            FRotator(0.0f, -45.0f, 0.0f), // Flat and level (Pitch=0, Roll=0)
+            FRotator(0.0f, -45.0f, -90.0f), // Roll=-90 compensates baked Roll=90 in mesh
             FVector(SubmarineScale),
             TEXT("Submarine_Decoration"));
     }

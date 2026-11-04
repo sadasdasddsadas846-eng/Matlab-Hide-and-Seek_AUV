@@ -2,11 +2,15 @@
 #include "HideAndSeekGameMode.h"
 #include "Environment/UnderwaterLevelSetup.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerController.h"
 #include "UnderwaterSim.h"
 
 AHideAndSeekGameMode::AHideAndSeekGameMode()
 {
     PrimaryActorTick.bCanEverTick = true;
+
+    // Set the drone as the default pawn so player spawns AS the drone
+    DefaultPawnClass = AUnderwaterDrone::StaticClass();
 }
 
 void AHideAndSeekGameMode::BeginPlay()
@@ -29,6 +33,22 @@ void AHideAndSeekGameMode::BeginPlay()
     }
 
     FindDrones();
+
+    // Auto-possess the Seeker drone so the player controls it directly
+    if (SeekerDrone)
+    {
+        APlayerController* PC = GetWorld()->GetFirstPlayerController();
+        if (PC)
+        {
+            PC->Possess(SeekerDrone);
+            UE_LOG(LogUnderwaterSim, Log, TEXT("Player now possessing SEEKER drone!"));
+        }
+    }
+    else
+    {
+        UE_LOG(LogUnderwaterSim, Warning, TEXT("No Seeker drone found to possess! Player uses default pawn."));
+    }
+
     StartNewMatch();
 }
 
