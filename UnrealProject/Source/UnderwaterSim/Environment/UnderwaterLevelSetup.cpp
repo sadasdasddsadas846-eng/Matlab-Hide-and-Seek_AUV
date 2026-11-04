@@ -73,7 +73,8 @@ void AUnderwaterLevelSetup::PopulateLevel()
     SpawnCorals();
     SpawnShipwreck();
     SpawnSubmarineProp();
-    SpawnProceduralObstacles();
+    // Procedural primitives disabled — natural assets only
+    // SpawnProceduralObstacles();
     SpawnEnvironmentActor();
     SpawnDrones();
     ConfigureAtmosphere();
@@ -152,7 +153,7 @@ void AUnderwaterLevelSetup::SpawnTerrain()
 
 void AUnderwaterLevelSetup::SpawnCorals()
 {
-    // Predetermined coral placement positions for natural look
+    // Predetermined coral placement positions — lay flat on seabed (Roll = -90)
     struct FCoralPlacement
     {
         FVector Location;
@@ -161,28 +162,23 @@ void AUnderwaterLevelSetup::SpawnCorals()
     };
 
     const TArray<FCoralPlacement> CoralPlacements = {
-        // Main coral reef cluster — center-ish area
-        { FVector(0.0f, 0.0f, ArenaFloorZ + 50.0f),        FRotator(0.0f, 0.0f, 0.0f),     1.0f },
-        // Scattered coral formations around the arena
-        { FVector(3000.0f, 2000.0f, ArenaFloorZ + 30.0f),   FRotator(0.0f, 72.0f, 0.0f),    0.8f },
-        { FVector(-2500.0f, 3500.0f, ArenaFloorZ + 40.0f),  FRotator(0.0f, 144.0f, 0.0f),   0.9f },
-        { FVector(4000.0f, -1500.0f, ArenaFloorZ + 20.0f),  FRotator(0.0f, 216.0f, 0.0f),   1.1f },
-        { FVector(-3000.0f, -2000.0f, ArenaFloorZ + 60.0f), FRotator(0.0f, 288.0f, 0.0f),   0.7f },
-        { FVector(1500.0f, -4000.0f, ArenaFloorZ + 35.0f),  FRotator(0.0f, 36.0f, 0.0f),    0.85f },
-        { FVector(-5000.0f, 1000.0f, ArenaFloorZ + 45.0f),  FRotator(0.0f, 108.0f, 0.0f),   0.95f },
-        { FVector(5500.0f, 4500.0f, ArenaFloorZ + 25.0f),   FRotator(0.0f, 180.0f, 0.0f),   0.75f },
+        // Main coral reef cluster — center area, completely flat on seafloor
+        { FVector(0.0f, 0.0f, ArenaFloorZ),             FRotator(0.0f, 0.0f, -90.0f),   1.0f },
+        { FVector(2500.0f, 2000.0f, ArenaFloorZ),       FRotator(0.0f, 60.0f, -90.0f),  0.8f },
+        { FVector(-2500.0f, 2500.0f, ArenaFloorZ),      FRotator(0.0f, 120.0f, -90.0f), 0.9f },
+        { FVector(3000.0f, -2000.0f, ArenaFloorZ),      FRotator(0.0f, 180.0f, -90.0f), 0.85f },
+        { FVector(-2500.0f, -2000.0f, ArenaFloorZ),     FRotator(0.0f, 240.0f, -90.0f), 0.75f },
     };
 
     int32 CoralIndex = 0;
     for (const auto& Placement : CoralPlacements)
     {
-        // Alternate between CoralReef and CoralLighthouse for variety
-        UStaticMesh* MeshToUse = (CoralIndex % 2 == 0) ? CoralMesh : CoralLighthouseMesh;
-        if (!MeshToUse) MeshToUse = CoralMesh ? CoralMesh : CoralLighthouseMesh;
+        // Only use the high-quality CoralMesh (no fragmented lighthouse mesh)
+        if (!CoralMesh) continue;
 
         FString Name = FString::Printf(TEXT("Coral_Cluster_%d"), CoralIndex);
         SpawnStaticMeshActor(
-            MeshToUse,
+            CoralMesh,
             Placement.Location,
             Placement.Rotation,
             FVector(CoralScale * Placement.ScaleMult),
@@ -195,30 +191,15 @@ void AUnderwaterLevelSetup::SpawnCorals()
 
 void AUnderwaterLevelSetup::SpawnShipwreck()
 {
-    // Main shipwreck — tilted on its side, partially buried
-    SpawnStaticMeshActor(
-        ShipMesh,
-        FVector(-4000.0f, -4000.0f, ArenaFloorZ + 300.0f),
-        FRotator(15.0f, -30.0f, 25.0f),  // Tilted for dramatic effect
-        FVector(ShipwreckScale),
-        TEXT("Shipwreck_Main"));
-
-    // Also load the cruise ship wreck (from wreck-of-cruise-ship folder)
-    UStaticMesh* CruiseShipMesh = nullptr;
-
-    // Try loading from wreck-of-cruise-ship folder (textures/ship is a texture, not a mesh)
-    // The actual mesh should be in the source or root of the folder
-    CruiseShipMesh = LoadObject<UStaticMesh>(nullptr,
-        TEXT("/Game/Environments/wreck-of-cruise-ship-saudi-red-sea-coast/textures/ship.ship"));
-
-    if (CruiseShipMesh)
+    // Upright / level shipwreck on the seabed
+    if (ShipMesh)
     {
         SpawnStaticMeshActor(
-            CruiseShipMesh,
-            FVector(5000.0f, -3000.0f, ArenaFloorZ + 200.0f),
-            FRotator(-10.0f, 60.0f, 20.0f),
-            FVector(ShipwreckScale * 0.8f),
-            TEXT("Shipwreck_CruiseShip"));
+            ShipMesh,
+            FVector(-3500.0f, -3500.0f, ArenaFloorZ + 100.0f),
+            FRotator(0.0f, -30.0f, 0.0f), // Flat and level (Pitch=0, Roll=0)
+            FVector(ShipwreckScale),
+            TEXT("Shipwreck_Main"));
     }
 }
 
@@ -226,28 +207,16 @@ void AUnderwaterLevelSetup::SpawnShipwreck()
 
 void AUnderwaterLevelSetup::SpawnSubmarineProp()
 {
-    // Decorative submarine sitting on the seabed
-    SpawnStaticMeshActor(
-        SubmarineMesh,
-        FVector(2000.0f, 5000.0f, ArenaFloorZ + 400.0f),
-        FRotator(0.0f, -45.0f, 5.0f),
-        FVector(SubmarineScale),
-        TEXT("Submarine_Decoration"));
-
-    // Try loading additional submarine parts for a more complete model
-    UStaticMesh* SubPart2 = LoadObject<UStaticMesh>(nullptr,
-        TEXT("/Game/Drones/SubmarineModel/Object002.Object002"));
-    UStaticMesh* SubPart3 = LoadObject<UStaticMesh>(nullptr,
-        TEXT("/Game/Drones/SubmarineModel/Object003.Object003"));
-    UStaticMesh* SubBody = LoadObject<UStaticMesh>(nullptr,
-        TEXT("/Game/Drones/SubmarineModel/_Submarine2._Submarine2"));
-
-    const FVector SubLoc(2000.0f, 5000.0f, ArenaFloorZ + 400.0f);
-    const FRotator SubRot(0.0f, -45.0f, 5.0f);
-
-    if (SubPart2) SpawnStaticMeshActor(SubPart2, SubLoc, SubRot, FVector(SubmarineScale), TEXT("Submarine_Part2"));
-    if (SubPart3) SpawnStaticMeshActor(SubPart3, SubLoc, SubRot, FVector(SubmarineScale), TEXT("Submarine_Part3"));
-    if (SubBody) SpawnStaticMeshActor(SubBody, SubLoc, SubRot, FVector(SubmarineScale), TEXT("Submarine_Body"));
+    // Decorative submarine sitting upright and level on the seabed
+    if (SubmarineMesh)
+    {
+        SpawnStaticMeshActor(
+            SubmarineMesh,
+            FVector(2000.0f, 3000.0f, ArenaFloorZ + 150.0f),
+            FRotator(0.0f, -45.0f, 0.0f), // Flat and level (Pitch=0, Roll=0)
+            FVector(SubmarineScale),
+            TEXT("Submarine_Decoration"));
+    }
 }
 
 // ─── Procedural Obstacles (Rocks/Boxes for hiding spots) ────────────────────
