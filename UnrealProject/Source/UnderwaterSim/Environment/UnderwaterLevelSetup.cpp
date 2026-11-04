@@ -27,12 +27,12 @@ AUnderwaterLevelSetup::AUnderwaterLevelSetup()
 
     // ── Load Static Mesh assets from Content paths ──
 
-    // Terrain mesh (imported FBX → UAsset)
+    // Terrain mesh (model1.uasset is the 25MB static mesh)
     static ConstructorHelpers::FObjectFinder<UStaticMesh> TerrainFinder(
-        TEXT("/Game/Environments/Terrain/model.model"));
+        TEXT("/Game/Environments/Terrain/model1.model1"));
     if (TerrainFinder.Succeeded()) TerrainMesh = TerrainFinder.Object;
 
-    // Coral Reef mesh
+    // Coral Reef mesh (122MB static mesh)
     static ConstructorHelpers::FObjectFinder<UStaticMesh> CoralFinder(
         TEXT("/Game/Environments/Corals/CoralReef.CoralReef"));
     if (CoralFinder.Succeeded()) CoralMesh = CoralFinder.Object;
@@ -42,14 +42,9 @@ AUnderwaterLevelSetup::AUnderwaterLevelSetup()
         TEXT("/Game/Environments/coral-block-lighthouse/source/sketchfabTemp_obj.sketchfabTemp_obj"));
     if (CoralLighthouseFinder.Succeeded()) CoralLighthouseMesh = CoralLighthouseFinder.Object;
 
-    // Shipwreck
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> ShipFinder(
-        TEXT("/Game/Environments/Shipwreck/ship.ship"));
-    if (ShipFinder.Succeeded()) ShipMesh = ShipFinder.Object;
-
-    // Submarine (decorative prop)
+    // Submarine mesh (_Submarine2.uasset is the 4MB static mesh)
     static ConstructorHelpers::FObjectFinder<UStaticMesh> SubFinder(
-        TEXT("/Game/Drones/SubmarineModel/Object001.Object001"));
+        TEXT("/Game/Drones/SubmarineModel/_Submarine2._Submarine2"));
     if (SubFinder.Succeeded()) SubmarineMesh = SubFinder.Object;
 }
 
