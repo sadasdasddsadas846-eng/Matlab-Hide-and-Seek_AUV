@@ -17,8 +17,12 @@ AUnderwaterDrone::AUnderwaterDrone()
     DroneBody->SetSimulatePhysics(true);
     DroneBody->SetCollisionProfileName(TEXT("PhysicsActor"));
     DroneBody->SetMassOverrideInKg(NAME_None, 11.5f, true); // BlueROV2 ~11.5 kg
-    DroneBody->SetLinearDamping(0.1f);
-    DroneBody->SetAngularDamping(0.5f);
+    DroneBody->SetLinearDamping(0.8f);
+    DroneBody->SetAngularDamping(2.0f);
+
+    // Auto-stabilization / Metacentric lock: keep drone permanently upright (Roll = 0, Pitch = 0)
+    DroneBody->BodyInstance.bLockXRotation = true;
+    DroneBody->BodyInstance.bLockYRotation = true;
 
     // ── Buoyancy ──
     BuoyancyComp = CreateDefaultSubobject<UAUVBuoyancyComponent>(TEXT("Buoyancy"));
