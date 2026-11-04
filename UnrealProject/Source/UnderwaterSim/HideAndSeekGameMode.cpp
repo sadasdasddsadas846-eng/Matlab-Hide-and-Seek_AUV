@@ -1,5 +1,6 @@
 // HideAndSeekGameMode.cpp
 #include "HideAndSeekGameMode.h"
+#include "Environment/UnderwaterLevelSetup.h"
 #include "Kismet/GameplayStatics.h"
 #include "UnderwaterSim.h"
 
@@ -11,6 +12,22 @@ AHideAndSeekGameMode::AHideAndSeekGameMode()
 void AHideAndSeekGameMode::BeginPlay()
 {
     Super::BeginPlay();
+
+    // Ensure the underwater world is populated
+    TArray<AActor*> FoundSetups;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AUnderwaterLevelSetup::StaticClass(), FoundSetups);
+    if (FoundSetups.Num() == 0)
+    {
+        FActorSpawnParameters SpawnParams;
+        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        AUnderwaterLevelSetup* LevelSetup = GetWorld()->SpawnActor<AUnderwaterLevelSetup>(
+            AUnderwaterLevelSetup::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+        if (LevelSetup)
+        {
+            UE_LOG(LogUnderwaterSim, Log, TEXT("GameMode spawned AUnderwaterLevelSetup to populate arena."));
+        }
+    }
+
     FindDrones();
     StartNewMatch();
 }
