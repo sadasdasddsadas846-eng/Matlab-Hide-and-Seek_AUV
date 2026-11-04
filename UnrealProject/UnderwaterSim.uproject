@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "5.3",
+	"EngineAssociation": "5.8",
 	"Category": "Robotics Simulation",
 	"Description": "Underwater Drone Hide and Seek simulation using Unreal Engine and ROS 2",
 	"Modules": [

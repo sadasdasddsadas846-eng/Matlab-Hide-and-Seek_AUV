@@ -1,31 +1,30 @@
-// BuoyancyComponent.cpp
-#include "Drone/BuoyancyComponent.h"
+// AUVBuoyancyComponent.cpp
+#include "Drone/AUVBuoyancyComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
 #include "UnderwaterSim.h"
 
-UBuoyancyComponent::UBuoyancyComponent()
+UAUVBuoyancyComponent::UAUVBuoyancyComponent()
 {
     PrimaryComponentTick.bCanEverTick = true;
     PrimaryComponentTick.TickGroup = TG_PrePhysics;
 }
 
-void UBuoyancyComponent::BeginPlay()
+void UAUVBuoyancyComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Find the first primitive component that simulates physics
     PhysicsBody = GetOwner()->FindComponentByClass<UPrimitiveComponent>();
     if (PhysicsBody && !PhysicsBody->IsSimulatingPhysics())
     {
         UE_LOG(LogUnderwaterSim, Warning,
-               TEXT("BuoyancyComponent: %s physics body is not simulating physics!"),
+               TEXT("AUVBuoyancyComponent: %s physics body is not simulating physics!"),
                *GetOwner()->GetName());
     }
 }
 
-void UBuoyancyComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                        FActorComponentTickFunction* ThisTickFunction)
+void UAUVBuoyancyComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+                                          FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
@@ -34,7 +33,6 @@ void UBuoyancyComponent::TickComponent(float DeltaTime, ELevelTick TickType,
         return;
     }
 
-    // Update submersion state
     SubmersionRatio = CalculateSubmersionRatio();
     bIsSubmerged = SubmersionRatio > 0.01f;
 
@@ -46,22 +44,17 @@ void UBuoyancyComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     }
 }
 
-void UBuoyancyComponent::ApplyBuoyancy(float DeltaTime)
+void UAUVBuoyancyComponent::ApplyBuoyancy(float DeltaTime)
 {
-    // Archimedes' principle: F_buoyancy = rho * g * V_submerged
-    // In UE units: force in kg·cm/s² (since UE uses cm)
     const float BuoyancyForceMagnitude =
-        WaterDensity * Gravity * DisplacedVolume * 100.0f * 100.0f * 100.0f; // Convert m³ to cm³ density
+        WaterDensity * Gravity * DisplacedVolume * 100.0f * 100.0f * 100.0f;
 
-    // Scale by submersion ratio for partial submersion near the surface
     const float ScaledForce = BuoyancyForceMagnitude * SubmersionRatio;
-
-    // Apply upward force at center of mass
     const FVector BuoyancyForce = FVector(0.0f, 0.0f, ScaledForce);
     PhysicsBody->AddForce(BuoyancyForce, NAME_None, false);
 }
 
-void UBuoyancyComponent::ApplyHydrodynamicDrag(float DeltaTime)
+void UAUVBuoyancyComponent::ApplyHydrodynamicDrag(float DeltaTime)
 {
     const FVector Velocity = PhysicsBody->GetComponentVelocity();
     const float Speed = Velocity.Size();
@@ -73,22 +66,17 @@ void UBuoyancyComponent::ApplyHydrodynamicDrag(float DeltaTime)
 
     const FVector VelocityDir = Velocity.GetSafeNormal();
 
-    // F_drag = -(C_linear * v + C_quadratic * |v| * v) * rho * A * 0.5
-    // Simplified for game physics:
     const float LinearDrag = LinearDragCoefficient * Speed;
     const float QuadraticDrag = QuadraticDragCoefficient * Speed * Speed;
     const float TotalDragMagnitude = (LinearDrag + QuadraticDrag) *
                                       WaterDensity * CrossSectionalArea * 0.5f;
 
-    // Scale by submersion ratio
     const FVector DragForce = -VelocityDir * TotalDragMagnitude * SubmersionRatio;
-
     PhysicsBody->AddForce(DragForce, NAME_None, false);
 }
 
-void UBuoyancyComponent::ApplyAngularDrag(float DeltaTime)
+void UAUVBuoyancyComponent::ApplyAngularDrag(float DeltaTime)
 {
-    // Apply rotational damping to simulate water resistance
     const FVector AngularVelocity = PhysicsBody->GetPhysicsAngularVelocityInRadians();
     const float AngularSpeed = AngularVelocity.Size();
 
@@ -101,40 +89,38 @@ void UBuoyancyComponent::ApplyAngularDrag(float DeltaTime)
     PhysicsBody->AddTorqueInRadians(DampingTorque, NAME_None, false);
 }
 
-float UBuoyancyComponent::CalculateSubmersionRatio() const
+float UAUVBuoyancyComponent::CalculateSubmersionRatio() const
 {
     if (!GetOwner()) return 0.0f;
 
     const float ActorZ = GetOwner()->GetActorLocation().Z;
-    // Assume a bounding extent for smooth transition at surface
-    const float HalfHeight = 30.0f; // cm - approximate half-height of drone
+    const float HalfHeight = 30.0f;
 
     if (ActorZ + HalfHeight <= WaterSurfaceZ)
     {
-        return 1.0f; // Fully submerged
+        return 1.0f;
     }
     else if (ActorZ - HalfHeight >= WaterSurfaceZ)
     {
-        return 0.0f; // Fully above water
+        return 0.0f;
     }
     else
     {
-        // Partial submersion - linear interpolation
         return (WaterSurfaceZ - (ActorZ - HalfHeight)) / (2.0f * HalfHeight);
     }
 }
 
-float UBuoyancyComponent::GetNetBuoyancyForce() const
+float UAUVBuoyancyComponent::GetNetBuoyancyForce() const
 {
     const float BuoyancyForce = WaterDensity * Gravity * DisplacedVolume * 100.0f * 100.0f * 100.0f;
     const float GravityForce = DroneMass * Gravity;
     return (BuoyancyForce * SubmersionRatio) - GravityForce;
 }
 
-float UBuoyancyComponent::GetDepth() const
+float UAUVBuoyancyComponent::GetDepth() const
 {
     if (!GetOwner()) return 0.0f;
     const float DepthCm = WaterSurfaceZ - GetOwner()->GetActorLocation().Z;
-    return FMath::Max(0.0f, DepthCm / 100.0f); // Return in meters
+    return FMath::Max(0.0f, DepthCm / 100.0f);
 }
 

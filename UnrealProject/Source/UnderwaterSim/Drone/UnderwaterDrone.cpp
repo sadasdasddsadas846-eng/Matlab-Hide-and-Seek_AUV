@@ -1,6 +1,6 @@
 // UnderwaterDrone.cpp
 #include "Drone/UnderwaterDrone.h"
-#include "Drone/BuoyancyComponent.h"
+#include "Drone/AUVBuoyancyComponent.h"
 #include "Drone/ThrusterComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -21,7 +21,7 @@ AUnderwaterDrone::AUnderwaterDrone()
     DroneBody->SetAngularDamping(0.5f);
 
     // ── Buoyancy ──
-    BuoyancyComp = CreateDefaultSubobject<UBuoyancyComponent>(TEXT("Buoyancy"));
+    BuoyancyComp = CreateDefaultSubobject<UAUVBuoyancyComponent>(TEXT("Buoyancy"));
 
     // ── Camera (third-person follow for debugging/viewing) ──
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -40,7 +40,6 @@ AUnderwaterDrone::AUnderwaterDrone()
 
 void AUnderwaterDrone::SetupThrusters()
 {
-    // ── 4 Horizontal Thrusters at 45° angles ──
     // Front-Left: mounted at (+20, -15, 0) cm, angled 45° inward
     ThrusterFL = CreateDefaultSubobject<UThrusterComponent>(TEXT("ThrusterFL"));
     ThrusterFL->SetupAttachment(DroneBody);
@@ -70,18 +69,16 @@ void AUnderwaterDrone::SetupThrusters()
     ThrusterRR->ThrusterType = EThrusterType::Horizontal;
 
     // ── 2 Vertical Thrusters ──
-    // Vertical Left
     ThrusterVL = CreateDefaultSubobject<UThrusterComponent>(TEXT("ThrusterVL"));
     ThrusterVL->SetupAttachment(DroneBody);
     ThrusterVL->SetRelativeLocation(FVector(0.0f, -12.0f, 5.0f));
-    ThrusterVL->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f)); // Pointing up
+    ThrusterVL->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
     ThrusterVL->ThrusterType = EThrusterType::Vertical;
 
-    // Vertical Right
     ThrusterVR = CreateDefaultSubobject<UThrusterComponent>(TEXT("ThrusterVR"));
     ThrusterVR->SetupAttachment(DroneBody);
     ThrusterVR->SetRelativeLocation(FVector(0.0f, 12.0f, 5.0f));
-    ThrusterVR->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f)); // Pointing up
+    ThrusterVR->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
     ThrusterVR->ThrusterType = EThrusterType::Vertical;
 }
 
@@ -110,14 +107,8 @@ void AUnderwaterDrone::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
     PlayerInputComponent->BindAxis("Turn", this, &AUnderwaterDrone::InputYaw);
 }
 
-// ─────────────────────────────────────────────
-// Movement API
-// ─────────────────────────────────────────────
-
 void AUnderwaterDrone::SetSurge(float Value)
 {
-    // Forward/backward: all 4 horizontal thrusters contribute
-    // BlueROV2 vectored: FL+FR push forward, RL+RR push forward
     Value = FMath::Clamp(Value, -1.0f, 1.0f);
     ThrusterFL->SetThrustInput(Value);
     ThrusterFR->SetThrustInput(Value);
@@ -127,7 +118,6 @@ void AUnderwaterDrone::SetSurge(float Value)
 
 void AUnderwaterDrone::SetSway(float Value)
 {
-    // Strafe left/right: differential thrust on left vs right pairs
     Value = FMath::Clamp(Value, -1.0f, 1.0f);
     ThrusterFL->SetThrustInput(-Value);
     ThrusterFR->SetThrustInput(Value);
@@ -137,7 +127,6 @@ void AUnderwaterDrone::SetSway(float Value)
 
 void AUnderwaterDrone::SetHeave(float Value)
 {
-    // Up/down: both vertical thrusters
     Value = FMath::Clamp(Value, -1.0f, 1.0f);
     ThrusterVL->SetThrustInput(Value);
     ThrusterVR->SetThrustInput(Value);
@@ -145,7 +134,6 @@ void AUnderwaterDrone::SetHeave(float Value)
 
 void AUnderwaterDrone::SetYaw(float Value)
 {
-    // Yaw rotation: differential between diagonal pairs
     Value = FMath::Clamp(Value, -1.0f, 1.0f);
     ThrusterFL->SetThrustInput(Value);
     ThrusterFR->SetThrustInput(-Value);
@@ -170,7 +158,7 @@ void AUnderwaterDrone::InputYaw(float Value) { SetYaw(Value); }
 
 FVector AUnderwaterDrone::GetVelocityMetersPerSec() const
 {
-    return DroneBody->GetComponentVelocity() / 100.0f; // cm/s to m/s
+    return DroneBody->GetComponentVelocity() / 100.0f;
 }
 
 float AUnderwaterDrone::GetCurrentDepth() const
@@ -181,4 +169,3 @@ float AUnderwaterDrone::GetCurrentDepth() const
     }
     return 0.0f;
 }
-

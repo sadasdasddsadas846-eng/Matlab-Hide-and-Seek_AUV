@@ -7,7 +7,7 @@
 #include "GameFramework/Pawn.h"
 #include "UnderwaterDrone.generated.h"
 
-class UBuoyancyComponent;
+class UAUVBuoyancyComponent;
 class UThrusterComponent;
 class UStaticMeshComponent;
 class UCameraComponent;
@@ -32,16 +32,6 @@ enum class EDroneRole : uint8
  * - Buoyancy and hydrodynamic drag
  * - Onboard camera and sensor attachment points
  * - ROS 2 interface for autonomous control
- *
- * Thruster Layout (BlueROV2 Heavy):
- *   Top-down view:
- *     T1(FL)──────T2(FR)     Horizontal thrusters at 45° angles
- *         \      /           for omnidirectional XY movement
- *          [BODY]
- *         /      \
- *     T3(RL)──────T4(RR)
- *
- *     T5(VL)    T6(VR)       Vertical thrusters for depth control
  */
 UCLASS()
 class UNDERWATERSIM_API AUnderwaterDrone : public APawn
@@ -60,7 +50,7 @@ public:
     UStaticMeshComponent* DroneBody;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Drone")
-    UBuoyancyComponent* BuoyancyComp;
+    UAUVBuoyancyComponent* BuoyancyComp;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Drone|Camera")
     USpringArmComponent* CameraBoom;
@@ -98,7 +88,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game")
     int32 DroneID = 0;
 
-    // ── Movement API (called by AI or player input) ──
+    // ── Movement API ──
 
     /** Move forward/backward (-1 to 1) */
     UFUNCTION(BlueprintCallable, Category = "Drone|Movement")
@@ -132,13 +122,10 @@ protected:
     virtual void BeginPlay() override;
 
 private:
-    /** Create and configure all thruster components */
     void SetupThrusters();
 
-    /** Input binding callbacks */
     void InputSurge(float Value);
     void InputSway(float Value);
     void InputHeave(float Value);
     void InputYaw(float Value);
 };
-

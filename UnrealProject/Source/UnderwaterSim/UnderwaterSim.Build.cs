@@ -2,12 +2,23 @@
 // Build configuration for the Underwater Simulation module
 
 using UnrealBuildTool;
+using System.IO;
 
 public class UnderwaterSim : ModuleRules
 {
     public UnderwaterSim(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+
+        PublicIncludePaths.AddRange(new string[]
+        {
+            ModuleDirectory
+        });
+
+        PrivateIncludePaths.AddRange(new string[]
+        {
+            ModuleDirectory
+        });
 
         PublicDependencyModuleNames.AddRange(new string[]
         {
@@ -29,9 +40,9 @@ public class UnderwaterSim : ModuleRules
             "ProceduralMeshComponent"
         });
 
-        // ROS 2 Integration (rclUE plugin)
-        if (Target.Platform == UnrealTargetPlatform.Win64 ||
-            Target.Platform == UnrealTargetPlatform.Linux)
+        // ROS 2 Integration (rclUE plugin if installed in Plugins/)
+        string rclUEPluginPath = Path.Combine(ModuleDirectory, "..", "..", "Plugins", "rclUE");
+        if (Directory.Exists(rclUEPluginPath))
         {
             PublicDependencyModuleNames.Add("rclUE");
             PublicDefinitions.Add("WITH_ROS2=1");
@@ -42,4 +53,3 @@ public class UnderwaterSim : ModuleRules
         }
     }
 }
-

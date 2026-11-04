@@ -1,14 +1,14 @@
-// BuoyancyComponent.h
+// AUVBuoyancyComponent.h
 // Simulates buoyancy and hydrodynamic drag for underwater actors.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "BuoyancyComponent.generated.h"
+#include "AUVBuoyancyComponent.generated.h"
 
 /**
- * UBuoyancyComponent
+ * UAUVBuoyancyComponent
  *
  * Applies buoyancy force, gravity compensation, and hydrodynamic drag
  * to any actor with a UPrimitiveComponent that simulates physics.
@@ -17,12 +17,12 @@
  * Drag force:      F_d = -0.5 * rho * Cd * A * |v| * v
  */
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class UNDERWATERSIM_API UBuoyancyComponent : public UActorComponent
+class UNDERWATERSIM_API UAUVBuoyancyComponent : public UActorComponent
 {
     GENERATED_BODY()
 
 public:
-    UBuoyancyComponent();
+    UAUVBuoyancyComponent();
 
     virtual void TickComponent(float DeltaTime, ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
@@ -103,7 +103,7 @@ private:
     /** Calculate submersion ratio based on actor position */
     float CalculateSubmersionRatio() const;
 
-    /** Gravity constant m/s^2 */
-    static constexpr float Gravity = 981.0f; // cm/s^2 (UE uses cm)
+    /** Gravity constant cm/s^2 (UE uses cm) */
+    static constexpr float Gravity = 981.0f;
 };
 

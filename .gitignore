@@ -10,6 +10,10 @@ venv/
 # IDE
 .vscode/
 .idea/
+.vs/
+*.sln
+*.slnx
+.vsconfig
 
 # OS
 .DS_Store
@@ -20,10 +24,17 @@ build/
 install/
 log/
 
+# Unreal Engine generated
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+*.VC.db
+*.opendb
+
 # Gazebo
 *.log
 
 # MATLAB (legacy)
 *.asv
 *.m~
-
