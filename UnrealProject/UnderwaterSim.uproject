@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "5.8",
+	"EngineAssociation": "{A383B639-4B03-D894-B473-9CA9A512143C}",
 	"Category": "Robotics Simulation",
 	"Description": "Underwater Drone Hide and Seek simulation using Unreal Engine and ROS 2",
 	"Modules": [
@@ -27,7 +27,14 @@
 			"Name": "rclUE",
 			"Enabled": true,
 			"Optional": true
+		},
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "EditorScriptingUtilities",
+			"Enabled": true
 		}
 	]
 }
-
