@@ -46,8 +46,9 @@ void UAUVBuoyancyComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 void UAUVBuoyancyComponent::ApplyBuoyancy(float DeltaTime)
 {
-    const float BuoyancyForceMagnitude =
-        WaterDensity * Gravity * DisplacedVolume * 100.0f * 100.0f * 100.0f;
+    // Archimedes' principle: F_b = rho * g * V
+    // Multiply by 100.0f to convert Newtons (kg*m/s^2) to Unreal Force units (kg*cm/s^2)
+    const float BuoyancyForceMagnitude = WaterDensity * Gravity * DisplacedVolume * 100.0f;
 
     const float ScaledForce = BuoyancyForceMagnitude * SubmersionRatio;
     const FVector BuoyancyForce = FVector(0.0f, 0.0f, ScaledForce);

@@ -33,9 +33,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Buoyancy")
     float WaterDensity = 1025.0f;
 
-    /** Displaced volume of the body in m^3 */
+    /** Displaced volume of the body in m^3 (0.0118 gives slight positive buoyancy for 11.5kg drone) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Buoyancy")
-    float DisplacedVolume = 0.015f;
+    float DisplacedVolume = 0.0118f;
 
     /** Mass of the drone in kg */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Buoyancy")
