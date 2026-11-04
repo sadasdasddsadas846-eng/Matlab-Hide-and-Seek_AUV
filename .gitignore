@@ -31,6 +31,16 @@ Saved/
 DerivedDataCache/
 *.VC.db
 *.opendb
+__ExternalActors__/
+__ExternalObjects__/
+
+# Ignore intermediate in all subfolders
+*/Binaries/
+*/Intermediate/
+*/Saved/
+*/DerivedDataCache/
+*/__ExternalActors__/
+*/__ExternalObjects__/
 
 # Gazebo
 *.log
@@ -38,3 +48,6 @@ DerivedDataCache/
 # MATLAB (legacy)
 *.asv
 *.m~
+
+# Local engine copy
+UnrealProject 5.8/
