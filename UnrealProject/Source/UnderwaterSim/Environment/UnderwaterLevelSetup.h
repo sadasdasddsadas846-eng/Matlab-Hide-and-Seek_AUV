@@ -68,10 +68,29 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Setup")
     void PopulateLevel();
 
+    virtual void Tick(float DeltaTime) override;
+
 protected:
     virtual void BeginPlay() override;
 
 private:
+    struct FSwimmingCreature
+    {
+        UPROPERTY()
+        AActor* Actor = nullptr;
+        float Speed = 250.0f;
+        float TurnRate = 15.0f;
+        float BobAmplitude = 25.0f;
+        float BobFrequency = 1.5f;
+        float PhaseOffset = 0.0f;
+        float BaseZ = -500.0f;
+        bool bIsJellyfish = false;
+    };
+
+    TArray<FSwimmingCreature> SwimmingCreatures;
+    float ElapsedTime = 0.0f;
+
+    void GatherMarineLifeForAnimation();
     // Helpers
     AActor* SpawnStaticMeshActor(UStaticMesh* Mesh, const FVector& Location,
                                  const FRotator& Rotation, const FVector& Scale,

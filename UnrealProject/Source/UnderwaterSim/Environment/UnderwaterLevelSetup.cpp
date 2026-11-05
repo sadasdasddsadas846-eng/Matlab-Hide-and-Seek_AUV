@@ -21,7 +21,7 @@
 
 AUnderwaterLevelSetup::AUnderwaterLevelSetup()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
@@ -64,8 +64,123 @@ void AUnderwaterLevelSetup::PopulateLevel()
     SpawnEnvironmentActor();
     SpawnDrones();
     ConfigureAtmosphere();
+    GatherMarineLifeForAnimation();
 
     UE_LOG(LogUnderwaterSim, Log, TEXT("=== UnderwaterLevelSetup: Arena population complete! ==="));
+}
+
+void AUnderwaterLevelSetup::GatherMarineLifeForAnimation()
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    SwimmingCreatures.Empty();
+
+    TArray<AActor*> StaticMeshActors;
+    UGameplayStatics::GetAllActorsOfClass(World, AStaticMeshActor::StaticClass(), StaticMeshActors);
+
+    int32 Index = 0;
+    for (AActor* Actor : StaticMeshActors)
+    {
+        AStaticMeshActor* SMA = Cast<AStaticMeshActor>(Actor);
+        if (!SMA || !SMA->GetStaticMeshComponent() || !SMA->GetStaticMeshComponent()->GetStaticMesh())
+            continue;
+
+        const FString MeshPath = SMA->GetStaticMeshComponent()->GetStaticMesh()->GetPathName();
+        const bool bIsShark = MeshPath.Contains(TEXT("SM_ReefShark"));
+        const bool bIsTurtle = MeshPath.Contains(TEXT("SM_SeaTurtle"));
+        const bool bIsManta = MeshPath.Contains(TEXT("SM_MantaRay"));
+        const bool bIsFish = MeshPath.Contains(TEXT("SM_BarramundiFish")) || MeshPath.Contains(TEXT("SM_TropicalFishSchool"));
+        const bool bIsJelly = MeshPath.Contains(TEXT("SM_Jellyfish"));
+
+        if (bIsShark || bIsTurtle || bIsManta || bIsFish || bIsJelly)
+        {
+            SMA->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
+
+            FSwimmingCreature Entry;
+            Entry.Actor = SMA;
+            Entry.BaseZ = SMA->GetActorLocation().Z;
+            Entry.PhaseOffset = Index * 0.85f;
+            Entry.bIsJellyfish = bIsJelly;
+
+            const float DirectionSign = (Index % 2 == 0) ? 1.0f : -1.0f;
+            if (bIsShark)
+            {
+                Entry.Speed = 340.0f;
+                Entry.TurnRate = 14.0f * DirectionSign;
+                Entry.BobAmplitude = 15.0f;
+                Entry.BobFrequency = 1.1f;
+            }
+            else if (bIsManta)
+            {
+                Entry.Speed = 290.0f;
+                Entry.TurnRate = 11.0f * DirectionSign;
+                Entry.BobAmplitude = 35.0f;
+                Entry.BobFrequency = 0.9f;
+            }
+            else if (bIsTurtle)
+            {
+                Entry.Speed = 190.0f;
+                Entry.TurnRate = 12.0f * DirectionSign;
+                Entry.BobAmplitude = 22.0f;
+                Entry.BobFrequency = 1.0f;
+            }
+            else if (bIsFish)
+            {
+                Entry.Speed = 260.0f + (Index % 4) * 35.0f;
+                Entry.TurnRate = (18.0f + (Index % 3) * 4.0f) * DirectionSign;
+                Entry.BobAmplitude = 18.0f;
+                Entry.BobFrequency = 1.8f;
+            }
+            else // Jellyfish
+            {
+                Entry.Speed = 25.0f;
+                Entry.TurnRate = 20.0f * DirectionSign;
+                Entry.BobAmplitude = 55.0f;
+                Entry.BobFrequency = 1.4f;
+            }
+
+            SwimmingCreatures.Add(Entry);
+            Index++;
+        }
+    }
+
+    UE_LOG(LogUnderwaterSim, Log, TEXT("  Animated %d swimming marine creatures!"), SwimmingCreatures.Num());
+}
+
+void AUnderwaterLevelSetup::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    ElapsedTime += DeltaTime;
+
+    for (FSwimmingCreature& Creature : SwimmingCreatures)
+    {
+        if (!IsValid(Creature.Actor)) continue;
+
+        FVector Loc = Creature.Actor->GetActorLocation();
+        FRotator Rot = Creature.Actor->GetActorRotation();
+
+        Rot.Yaw += Creature.TurnRate * DeltaTime;
+        const float Wave = FMath::Sin(ElapsedTime * Creature.BobFrequency + Creature.PhaseOffset);
+
+        if (Creature.bIsJellyfish)
+        {
+            Loc.Z = Creature.BaseZ + Wave * Creature.BobAmplitude;
+            Rot.Pitch = 0.0f;
+            Rot.Roll = 0.0f;
+        }
+        else
+        {
+            const FVector Forward = FRotator(0.0f, Rot.Yaw, 0.0f).Vector();
+            Loc += Forward * (Creature.Speed * DeltaTime);
+            Loc.Z = Creature.BaseZ + Wave * Creature.BobAmplitude;
+            Rot.Pitch = FMath::Cos(ElapsedTime * Creature.BobFrequency + Creature.PhaseOffset) * 4.0f;
+            Rot.Roll = 0.0f;
+        }
+
+        Creature.Actor->SetActorLocationAndRotation(Loc, Rot, false, nullptr, ETeleportType::TeleportPhysics);
+    }
 }
 
 // ─── Helper: Spawn a Static Mesh Actor ──────────────────────────────────────
@@ -140,7 +255,7 @@ void AUnderwaterLevelSetup::SpawnCorals()
                 SMA->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
                 FRotator CurRot = SMA->GetActorRotation();
                 FVector CurLoc = SMA->GetActorLocation();
-                SMA->SetActorLocation(FVector(CurLoc.X, CurLoc.Y, ArenaFloorZ + 30.0f));
+                SMA->SetActorLocation(FVector(CurLoc.X, CurLoc.Y, ArenaFloorZ - 15.0f));
                 SMA->SetActorRotation(FRotator(0.0f, CurRot.Yaw, 90.0f));
                 ExistingCoralCount++;
             }
@@ -208,7 +323,7 @@ void AUnderwaterLevelSetup::SpawnSubmarineProp()
     TArray<AActor*> StaticMeshActors;
     UGameplayStatics::GetAllActorsOfClass(World, AStaticMeshActor::StaticClass(), StaticMeshActors);
 
-    bool bFoundFirstSub = false;
+    int32 SubCount = 0;
     for (AActor* Actor : StaticMeshActors)
     {
         AStaticMeshActor* SMA = Cast<AStaticMeshActor>(Actor);
@@ -217,27 +332,20 @@ void AUnderwaterLevelSetup::SpawnSubmarineProp()
             const FString MeshPath = SMA->GetStaticMeshComponent()->GetStaticMesh()->GetPathName();
             if (MeshPath.Contains(TEXT("_Submarine2")))
             {
-                if (!bFoundFirstSub)
-                {
-                    bFoundFirstSub = true;
-                    SMA->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
-                    // In _Submarine2, local UP is -Y; Roll=+90 rotates -Y to +Z (upright!)
-                    SMA->SetActorLocation(FVector(1200.0f, 800.0f, ArenaFloorZ + 70.0f));
-                    SMA->SetActorRotation(FRotator(0.0f, -45.0f, 90.0f));
-                    SMA->SetActorScale3D(FVector(SubmarineScale));
-                }
-                else
-                {
-                    // Remove duplicate submarine static mesh actor
-                    SMA->Destroy();
-                }
+                SMA->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
+                FRotator CurRot = SMA->GetActorRotation();
+                FVector CurLoc = SMA->GetActorLocation();
+                // In _Submarine2, local UP is -Y; Roll=+90 rotates -Y to +Z (upright!)
+                SMA->SetActorLocation(FVector(CurLoc.X, CurLoc.Y, ArenaFloorZ + 75.0f));
+                SMA->SetActorRotation(FRotator(0.0f, CurRot.Yaw, 90.0f));
+                SubCount++;
             }
         }
     }
 
-    if (bFoundFirstSub)
+    if (SubCount > 0)
     {
-        UE_LOG(LogUnderwaterSim, Log, TEXT("  Straightened existing Submarine prop to Roll=+90 (upright)."));
+        UE_LOG(LogUnderwaterSim, Log, TEXT("  Straightened %d existing Submarine props to Roll=+90 (upright)."), SubCount);
         return;
     }
 
