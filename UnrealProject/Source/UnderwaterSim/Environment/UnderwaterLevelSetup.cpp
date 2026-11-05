@@ -136,10 +136,12 @@ void AUnderwaterLevelSetup::SpawnCorals()
             const FString MeshPath = SMA->GetStaticMeshComponent()->GetStaticMesh()->GetPathName();
             if (MeshPath.Contains(TEXT("CoralReef")))
             {
-                // Ensure existing coral is completely flat on seabed: Pitch=0, Roll=-90
+                // Ensure existing coral is right-side up and flat on seabed: Pitch=0, Roll=+90
                 SMA->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
                 FRotator CurRot = SMA->GetActorRotation();
-                SMA->SetActorRotation(FRotator(0.0f, CurRot.Yaw, -90.0f));
+                FVector CurLoc = SMA->GetActorLocation();
+                SMA->SetActorLocation(FVector(CurLoc.X, CurLoc.Y, ArenaFloorZ + 30.0f));
+                SMA->SetActorRotation(FRotator(0.0f, CurRot.Yaw, 90.0f));
                 ExistingCoralCount++;
             }
             else if (MeshPath.Contains(TEXT("model1")) || MeshPath.Contains(TEXT("sketchfabTemp")))
@@ -152,12 +154,12 @@ void AUnderwaterLevelSetup::SpawnCorals()
 
     if (ExistingCoralCount > 0)
     {
-        UE_LOG(LogUnderwaterSim, Log, TEXT("  Found %d existing CoralReef actors in level (straightened to Roll=-90)."), ExistingCoralCount);
+        UE_LOG(LogUnderwaterSim, Log, TEXT("  Found %d existing CoralReef actors in level (straightened to Roll=+90)."), ExistingCoralCount);
         return;
     }
 
-    // In CoralReef.uasset, the coral top surface faces +Y at Rot(0,0,0).
-    // FRotator(Pitch=0, Yaw=..., Roll=-90) rotates +Y directly into +Z (World Up), laying it 100% flat.
+    // In CoralReef.uasset, the coral top surface faces -Y at Rot(0,0,0) due to FBX Y-inversion.
+    // FRotator(Pitch=0, Yaw=..., Roll=+90) rotates -Y directly into +Z (World Up), laying it 100% flat and right-side up.
     struct FCoralPlacement
     {
         FVector Location;
@@ -165,11 +167,11 @@ void AUnderwaterLevelSetup::SpawnCorals()
         float ScaleMult;
     };
 
-    const float CoralZ = ArenaFloorZ + 200.0f; // Sits cleanly on top of the Landscape floor
+    const float CoralZ = ArenaFloorZ + 30.0f; // Sits flush on the Landscape floor
     const TArray<FCoralPlacement> CoralPlacements = {
-        { FVector(0.0f, 0.0f, CoralZ),             FRotator(0.0f, 0.0f, -90.0f),   1.0f },
-        { FVector(2800.0f, 2000.0f, CoralZ),       FRotator(0.0f, 60.0f, -90.0f),  0.85f },
-        { FVector(-2600.0f, -1800.0f, CoralZ),     FRotator(0.0f, 150.0f, -90.0f), 0.85f },
+        { FVector(0.0f, 0.0f, CoralZ),             FRotator(0.0f, 0.0f, 90.0f),   1.0f },
+        { FVector(2800.0f, 2000.0f, CoralZ),       FRotator(0.0f, 60.0f, 90.0f),  0.85f },
+        { FVector(-2600.0f, -1800.0f, CoralZ),     FRotator(0.0f, 150.0f, 90.0f), 0.85f },
     };
 
     int32 CoralIndex = 0;
