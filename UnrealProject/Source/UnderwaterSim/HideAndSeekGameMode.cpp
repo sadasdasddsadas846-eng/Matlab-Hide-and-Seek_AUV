@@ -8,8 +8,6 @@
 AHideAndSeekGameMode::AHideAndSeekGameMode()
 {
     PrimaryActorTick.bCanEverTick = true;
-
-    // Set the drone as the default pawn so player spawns AS the drone
     DefaultPawnClass = AUnderwaterDrone::StaticClass();
 }
 
@@ -17,19 +15,25 @@ void AHideAndSeekGameMode::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Ensure the underwater world is populated
+    // Ensure the underwater world is populated immediately before finding drones
     TArray<AActor*> FoundSetups;
     UGameplayStatics::GetAllActorsOfClass(GetWorld(), AUnderwaterLevelSetup::StaticClass(), FoundSetups);
+    AUnderwaterLevelSetup* LevelSetup = nullptr;
     if (FoundSetups.Num() == 0)
     {
         FActorSpawnParameters SpawnParams;
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-        AUnderwaterLevelSetup* LevelSetup = GetWorld()->SpawnActor<AUnderwaterLevelSetup>(
+        LevelSetup = GetWorld()->SpawnActor<AUnderwaterLevelSetup>(
             AUnderwaterLevelSetup::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
-        if (LevelSetup)
-        {
-            UE_LOG(LogUnderwaterSim, Log, TEXT("GameMode spawned AUnderwaterLevelSetup to populate arena."));
-        }
+    }
+    else
+    {
+        LevelSetup = Cast<AUnderwaterLevelSetup>(FoundSetups[0]);
+    }
+
+    if (LevelSetup)
+    {
+        LevelSetup->PopulateLevel();
     }
 
     FindDrones();
@@ -40,13 +44,16 @@ void AHideAndSeekGameMode::BeginPlay()
         APlayerController* PC = GetWorld()->GetFirstPlayerController();
         if (PC)
         {
+            APawn* OldPawn = PC->GetPawn();
+            if (OldPawn && OldPawn != SeekerDrone)
+            {
+                PC->UnPossess();
+                OldPawn->Destroy();
+            }
             PC->Possess(SeekerDrone);
-            UE_LOG(LogUnderwaterSim, Log, TEXT("Player now possessing SEEKER drone!"));
+            PC->SetControlRotation(FRotator(-15.0f, SeekerDrone->GetActorRotation().Yaw, 0.0f));
+            UE_LOG(LogUnderwaterSim, Log, TEXT("Player now possessing SEEKER drone (%s)!"), *SeekerDrone->GetName());
         }
-    }
-    else
-    {
-        UE_LOG(LogUnderwaterSim, Warning, TEXT("No Seeker drone found to possess! Player uses default pawn."));
     }
 
     StartNewMatch();
@@ -60,17 +67,26 @@ void AHideAndSeekGameMode::FindDrones()
     for (AActor* Actor : FoundDrones)
     {
         AUnderwaterDrone* Drone = Cast<AUnderwaterDrone>(Actor);
-        if (Drone)
+        if (!Drone) continue;
+
+        const FString Name = Drone->GetName();
+        if ((Drone->DroneRole == EDroneRole::Seeker || Name.Contains(TEXT("Seeker"))) && !SeekerDrone)
         {
-            if (Drone->DroneRole == EDroneRole::Seeker && !SeekerDrone)
-            {
-                SeekerDrone = Drone;
-            }
-            else if (Drone->DroneRole == EDroneRole::Hider && !HiderDrone)
-            {
-                HiderDrone = Drone;
-            }
+            SeekerDrone = Drone;
+            SeekerDrone->DroneRole = EDroneRole::Seeker;
         }
+        else if ((Drone->DroneRole == EDroneRole::Hider || Name.Contains(TEXT("Hider"))) && !HiderDrone)
+        {
+            HiderDrone = Drone;
+            HiderDrone->DroneRole = EDroneRole::Hider;
+        }
+    }
+
+    // Fallback: if still no SeekerDrone, pick the first available drone
+    if (!SeekerDrone && FoundDrones.Num() > 0)
+    {
+        SeekerDrone = Cast<AUnderwaterDrone>(FoundDrones[0]);
+        if (SeekerDrone) SeekerDrone->DroneRole = EDroneRole::Seeker;
     }
 }
 
@@ -94,7 +110,6 @@ void AHideAndSeekGameMode::Tick(float DeltaTime)
 
     RoundTimer += DeltaTime;
 
-    // Transition from Hiding Phase to Active Seeking Phase
     if (CurrentPhase == EGameStatePhase::HidingPhase && RoundTimer >= HidingHeadstartSeconds)
     {
         CurrentPhase = EGameStatePhase::SeekingPhase;
@@ -102,7 +117,6 @@ void AHideAndSeekGameMode::Tick(float DeltaTime)
         UE_LOG(LogUnderwaterSim, Log, TEXT("Phase Changed: ACTIVE SEEKING!"));
     }
 
-    // Check round timeout
     if (RoundTimer >= MaxRoundDurationSeconds)
     {
         CurrentPhase = EGameStatePhase::HiderWon;
@@ -111,7 +125,6 @@ void AHideAndSeekGameMode::Tick(float DeltaTime)
         return;
     }
 
-    // Check capture condition if seeking is active
     if (CurrentPhase == EGameStatePhase::SeekingPhase)
     {
         CheckCaptureCondition();
@@ -127,7 +140,7 @@ void AHideAndSeekGameMode::CheckCaptureCondition()
     }
 
     const float DistanceCm = FVector::Dist(SeekerDrone->GetActorLocation(), HiderDrone->GetActorLocation());
-    CurrentDistanceBetweenDrones = DistanceCm / 100.0f; // meters
+    CurrentDistanceBetweenDrones = DistanceCm / 100.0f;
 
     if (CurrentDistanceBetweenDrones <= CaptureDistanceThresholdMeters)
     {
@@ -137,4 +150,3 @@ void AHideAndSeekGameMode::CheckCaptureCondition()
         UE_LOG(LogUnderwaterSim, Log, TEXT("Match Over: SEEKER CAPTURED HIDER at distance %.2fm!"), CurrentDistanceBetweenDrones);
     }
 }
-

@@ -15,12 +15,6 @@ void UAUVBuoyancyComponent::BeginPlay()
     Super::BeginPlay();
 
     PhysicsBody = GetOwner()->FindComponentByClass<UPrimitiveComponent>();
-    if (PhysicsBody && !PhysicsBody->IsSimulatingPhysics())
-    {
-        UE_LOG(LogUnderwaterSim, Warning,
-               TEXT("AUVBuoyancyComponent: %s physics body is not simulating physics!"),
-               *GetOwner()->GetName());
-    }
 }
 
 void UAUVBuoyancyComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -46,10 +40,14 @@ void UAUVBuoyancyComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 void UAUVBuoyancyComponent::ApplyBuoyancy(float DeltaTime)
 {
-    // Archimedes' principle: F_b = rho * g * V
-    // Multiply by 100.0f to convert Newtons (kg*m/s^2) to Unreal Force units (kg*cm/s^2)
-    const float BuoyancyForceMagnitude = WaterDensity * Gravity * DisplacedVolume * 100.0f;
+    // If gravity is disabled on the physics body, it is already neutrally buoyant in water
+    if (!PhysicsBody->IsGravityEnabled())
+    {
+        return;
+    }
 
+    // Gravity is already in cm/s^2 (981.0f), so rho * g_cm * V is directly in kg*cm/s^2 (Unreal Force units)
+    const float BuoyancyForceMagnitude = WaterDensity * Gravity * DisplacedVolume;
     const float ScaledForce = BuoyancyForceMagnitude * SubmersionRatio;
     const FVector BuoyancyForce = FVector(0.0f, 0.0f, ScaledForce);
     PhysicsBody->AddForce(BuoyancyForce, NAME_None, false);
@@ -57,22 +55,24 @@ void UAUVBuoyancyComponent::ApplyBuoyancy(float DeltaTime)
 
 void UAUVBuoyancyComponent::ApplyHydrodynamicDrag(float DeltaTime)
 {
-    const FVector Velocity = PhysicsBody->GetComponentVelocity();
-    const float Speed = Velocity.Size();
+    const FVector VelocityCm = PhysicsBody->GetComponentVelocity();
+    const float SpeedCm = VelocityCm.Size();
 
-    if (Speed < KINDA_SMALL_NUMBER)
+    if (SpeedCm < KINDA_SMALL_NUMBER)
     {
         return;
     }
 
-    const FVector VelocityDir = Velocity.GetSafeNormal();
+    const FVector VelocityDir = VelocityCm / SpeedCm;
+    const float SpeedMeters = SpeedCm / 100.0f;
 
-    const float LinearDrag = LinearDragCoefficient * Speed;
-    const float QuadraticDrag = QuadraticDragCoefficient * Speed * Speed;
-    const float TotalDragMagnitude = (LinearDrag + QuadraticDrag) *
-                                      WaterDensity * CrossSectionalArea * 0.5f;
+    // Drag in Newtons: F_d = 0.5 * rho * A * (Cd_lin * v + Cd_quad * v^2)
+    const float LinearDrag = LinearDragCoefficient * SpeedMeters;
+    const float QuadraticDrag = QuadraticDragCoefficient * SpeedMeters * SpeedMeters;
+    const float DragNewtons = (LinearDrag + QuadraticDrag) * WaterDensity * CrossSectionalArea * 0.5f;
 
-    const FVector DragForce = -VelocityDir * TotalDragMagnitude * SubmersionRatio;
+    // Convert Newtons (kg*m/s^2) to Unreal force units (kg*cm/s^2) by multiplying by 100
+    const FVector DragForce = -VelocityDir * (DragNewtons * 100.0f) * SubmersionRatio;
     PhysicsBody->AddForce(DragForce, NAME_None, false);
 }
 
@@ -113,9 +113,9 @@ float UAUVBuoyancyComponent::CalculateSubmersionRatio() const
 
 float UAUVBuoyancyComponent::GetNetBuoyancyForce() const
 {
-    const float BuoyancyForce = WaterDensity * Gravity * DisplacedVolume * 100.0f * 100.0f * 100.0f;
-    const float GravityForce = DroneMass * Gravity;
-    return (BuoyancyForce * SubmersionRatio) - GravityForce;
+    const float BuoyancyForceNewtons = WaterDensity * 9.81f * DisplacedVolume;
+    const float GravityForceNewtons = DroneMass * 9.81f;
+    return (BuoyancyForceNewtons * SubmersionRatio) - GravityForceNewtons;
 }
 
 float UAUVBuoyancyComponent::GetDepth() const
@@ -124,4 +124,3 @@ float UAUVBuoyancyComponent::GetDepth() const
     const float DepthCm = WaterSurfaceZ - GetOwner()->GetActorLocation().Z;
     return FMath::Max(0.0f, DepthCm / 100.0f);
 }
-

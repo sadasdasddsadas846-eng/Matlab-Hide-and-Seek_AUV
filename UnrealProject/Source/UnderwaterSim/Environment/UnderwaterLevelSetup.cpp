@@ -25,22 +25,10 @@ AUnderwaterLevelSetup::AUnderwaterLevelSetup()
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
-    // ── Load Static Mesh assets from Content paths ──
-
-    // Terrain mesh (model1.uasset is the 25MB static mesh)
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> TerrainFinder(
-        TEXT("/Game/Environments/Terrain/model1.model1"));
-    if (TerrainFinder.Succeeded()) TerrainMesh = TerrainFinder.Object;
-
     // Coral Reef mesh (122MB static mesh)
     static ConstructorHelpers::FObjectFinder<UStaticMesh> CoralFinder(
         TEXT("/Game/Environments/Corals/CoralReef.CoralReef"));
     if (CoralFinder.Succeeded()) CoralMesh = CoralFinder.Object;
-
-    // Coral block lighthouse (alternative coral)
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> CoralLighthouseFinder(
-        TEXT("/Game/Environments/coral-block-lighthouse/source/sketchfabTemp_obj.sketchfabTemp_obj"));
-    if (CoralLighthouseFinder.Succeeded()) CoralLighthouseMesh = CoralLighthouseFinder.Object;
 
     // Submarine mesh (_Submarine2.uasset is the 4MB static mesh)
     static ConstructorHelpers::FObjectFinder<UStaticMesh> SubFinder(
@@ -69,12 +57,10 @@ void AUnderwaterLevelSetup::PopulateLevel()
 
     UE_LOG(LogUnderwaterSim, Log, TEXT("=== UnderwaterLevelSetup: Populating arena... ==="));
 
-    SpawnTerrain();
+    // Note: UnderwaterArena already has a complete Landscape floor at Z=-1250.
+    // Do NOT spawn model1.model1 (SpawnTerrain) as it contains floating scan debris.
     SpawnCorals();
-    SpawnShipwreck();
     SpawnSubmarineProp();
-    // Procedural primitives disabled — natural assets only
-    // SpawnProceduralObstacles();
     SpawnEnvironmentActor();
     SpawnDrones();
     ConfigureAtmosphere();
@@ -116,8 +102,8 @@ AActor* AUnderwaterLevelSetup::SpawnStaticMeshActor(
         MeshActor->SetActorLabel(Label);
 #endif
 
-        UE_LOG(LogUnderwaterSim, Log, TEXT("  Spawned: %s at (%.0f, %.0f, %.0f)"),
-               *Label, Location.X, Location.Y, Location.Z);
+        UE_LOG(LogUnderwaterSim, Log, TEXT("  Spawned: %s at (%.0f, %.0f, %.0f) Rot=(P=%.0f, Y=%.0f, R=%.0f)"),
+               *Label, Location.X, Location.Y, Location.Z, Rotation.Pitch, Rotation.Yaw, Rotation.Roll);
     }
 
     return MeshActor;
@@ -127,33 +113,51 @@ AActor* AUnderwaterLevelSetup::SpawnStaticMeshActor(
 
 void AUnderwaterLevelSetup::SpawnTerrain()
 {
-    // Main terrain: large seabed floor
-    SpawnStaticMeshActor(
-        TerrainMesh,
-        FVector(0.0f, 0.0f, ArenaFloorZ),
-        FRotator::ZeroRotator,
-        FVector(TerrainScale),
-        TEXT("Seabed_Terrain"));
-
-    // If we also have the agisoft terrain, overlay it slightly offset for variety
-    UStaticMesh* AgisoftTerrain = LoadObject<UStaticMesh>(nullptr,
-        TEXT("/Game/Environments/underwater-terrain-agisoftnaturechallenge/textures/model.model"));
-    if (AgisoftTerrain)
-    {
-        SpawnStaticMeshActor(
-            AgisoftTerrain,
-            FVector(4000.0f, 3000.0f, ArenaFloorZ + 200.0f),
-            FRotator(0.0f, 45.0f, 0.0f),
-            FVector(TerrainScale * 0.8f),
-            TEXT("Seabed_Terrain_Agisoft"));
-    }
+    // Disabled: UnderwaterArena already uses the built-in Landscape floor.
 }
 
 // ─── Coral Clusters ─────────────────────────────────────────────────────────
 
 void AUnderwaterLevelSetup::SpawnCorals()
 {
-    // Predetermined coral placement positions — lay flat on seabed (Roll = -90)
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    // Check if coral actors already exist in the level (placed in Editor)
+    TArray<AActor*> StaticMeshActors;
+    UGameplayStatics::GetAllActorsOfClass(World, AStaticMeshActor::StaticClass(), StaticMeshActors);
+
+    int32 ExistingCoralCount = 0;
+    for (AActor* Actor : StaticMeshActors)
+    {
+        AStaticMeshActor* SMA = Cast<AStaticMeshActor>(Actor);
+        if (SMA && SMA->GetStaticMeshComponent() && SMA->GetStaticMeshComponent()->GetStaticMesh())
+        {
+            const FString MeshPath = SMA->GetStaticMeshComponent()->GetStaticMesh()->GetPathName();
+            if (MeshPath.Contains(TEXT("CoralReef")))
+            {
+                // Ensure existing coral is completely flat on seabed: Pitch=0, Roll=-90
+                SMA->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
+                FRotator CurRot = SMA->GetActorRotation();
+                SMA->SetActorRotation(FRotator(0.0f, CurRot.Yaw, -90.0f));
+                ExistingCoralCount++;
+            }
+            else if (MeshPath.Contains(TEXT("model1")) || MeshPath.Contains(TEXT("sketchfabTemp")))
+            {
+                // Destroy any broken floating photogrammetry scrap actors still in the map
+                SMA->Destroy();
+            }
+        }
+    }
+
+    if (ExistingCoralCount > 0)
+    {
+        UE_LOG(LogUnderwaterSim, Log, TEXT("  Found %d existing CoralReef actors in level (straightened to Roll=-90)."), ExistingCoralCount);
+        return;
+    }
+
+    // In CoralReef.uasset, the coral top surface faces +Y at Rot(0,0,0).
+    // FRotator(Pitch=0, Yaw=..., Roll=-90) rotates +Y directly into +Z (World Up), laying it 100% flat.
     struct FCoralPlacement
     {
         FVector Location;
@@ -161,20 +165,16 @@ void AUnderwaterLevelSetup::SpawnCorals()
         float ScaleMult;
     };
 
+    const float CoralZ = ArenaFloorZ + 200.0f; // Sits cleanly on top of the Landscape floor
     const TArray<FCoralPlacement> CoralPlacements = {
-        // Main coral reef cluster — flat on seafloor
-        // FRotator(Pitch, Yaw, Roll): Pitch=-90 rotates the tall Z-axis mesh to lie flat
-        { FVector(0.0f, 0.0f, ArenaFloorZ),             FRotator(-90.0f, 0.0f, 0.0f),   1.0f },
-        { FVector(2500.0f, 2000.0f, ArenaFloorZ),       FRotator(-90.0f, 60.0f, 0.0f),  0.8f },
-        { FVector(-2500.0f, 2500.0f, ArenaFloorZ),      FRotator(-90.0f, 120.0f, 0.0f), 0.9f },
-        { FVector(3000.0f, -2000.0f, ArenaFloorZ),      FRotator(-90.0f, 180.0f, 0.0f), 0.85f },
-        { FVector(-2500.0f, -2000.0f, ArenaFloorZ),     FRotator(-90.0f, 240.0f, 0.0f), 0.75f },
+        { FVector(0.0f, 0.0f, CoralZ),             FRotator(0.0f, 0.0f, -90.0f),   1.0f },
+        { FVector(2800.0f, 2000.0f, CoralZ),       FRotator(0.0f, 60.0f, -90.0f),  0.85f },
+        { FVector(-2600.0f, -1800.0f, CoralZ),     FRotator(0.0f, 150.0f, -90.0f), 0.85f },
     };
 
     int32 CoralIndex = 0;
     for (const auto& Placement : CoralPlacements)
     {
-        // Only use the high-quality CoralMesh (no fragmented lighthouse mesh)
         if (!CoralMesh) continue;
 
         FString Name = FString::Printf(TEXT("Coral_Cluster_%d"), CoralIndex);
@@ -192,109 +192,69 @@ void AUnderwaterLevelSetup::SpawnCorals()
 
 void AUnderwaterLevelSetup::SpawnShipwreck()
 {
-    // Upright / level shipwreck on the seabed
-    if (ShipMesh)
-    {
-        SpawnStaticMeshActor(
-            ShipMesh,
-            FVector(-3500.0f, -3500.0f, ArenaFloorZ + 100.0f),
-            FRotator(0.0f, -30.0f, 0.0f), // Flat and level (Pitch=0, Roll=0)
-            FVector(ShipwreckScale),
-            TEXT("Shipwreck_Main"));
-    }
+    // Shipwreck static mesh optional
 }
 
 // ─── Submarine Prop ─────────────────────────────────────────────────────────
 
 void AUnderwaterLevelSetup::SpawnSubmarineProp()
 {
-    // Decorative submarine sitting upright on the seabed
-    // The _Submarine2 mesh has a baked 90° roll in its geometry, compensate with Roll=-90
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    // Check if Submarine decoration already exists in the map
+    TArray<AActor*> StaticMeshActors;
+    UGameplayStatics::GetAllActorsOfClass(World, AStaticMeshActor::StaticClass(), StaticMeshActors);
+
+    bool bFoundFirstSub = false;
+    for (AActor* Actor : StaticMeshActors)
+    {
+        AStaticMeshActor* SMA = Cast<AStaticMeshActor>(Actor);
+        if (SMA && SMA->GetStaticMeshComponent() && SMA->GetStaticMeshComponent()->GetStaticMesh())
+        {
+            const FString MeshPath = SMA->GetStaticMeshComponent()->GetStaticMesh()->GetPathName();
+            if (MeshPath.Contains(TEXT("_Submarine2")))
+            {
+                if (!bFoundFirstSub)
+                {
+                    bFoundFirstSub = true;
+                    SMA->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
+                    // In _Submarine2, local UP is -Y; Roll=+90 rotates -Y to +Z (upright!)
+                    SMA->SetActorLocation(FVector(1200.0f, 800.0f, ArenaFloorZ + 70.0f));
+                    SMA->SetActorRotation(FRotator(0.0f, -45.0f, 90.0f));
+                    SMA->SetActorScale3D(FVector(SubmarineScale));
+                }
+                else
+                {
+                    // Remove duplicate submarine static mesh actor
+                    SMA->Destroy();
+                }
+            }
+        }
+    }
+
+    if (bFoundFirstSub)
+    {
+        UE_LOG(LogUnderwaterSim, Log, TEXT("  Straightened existing Submarine prop to Roll=+90 (upright)."));
+        return;
+    }
+
     if (SubmarineMesh)
     {
         SpawnStaticMeshActor(
             SubmarineMesh,
-            FVector(2000.0f, 3000.0f, ArenaFloorZ + 150.0f),
-            FRotator(0.0f, -45.0f, -90.0f), // Roll=-90 compensates baked Roll=90 in mesh
+            FVector(1200.0f, 800.0f, ArenaFloorZ + 70.0f),
+            FRotator(0.0f, -45.0f, 90.0f), // Roll=+90 rotates local -Y up axis to +Z (upright)
             FVector(SubmarineScale),
             TEXT("Submarine_Decoration"));
     }
 }
 
-// ─── Procedural Obstacles (Rocks/Boxes for hiding spots) ────────────────────
+// ─── Procedural Obstacles ───────────────────────────────────────────────────
 
 void AUnderwaterLevelSetup::SpawnProceduralObstacles()
 {
-    UWorld* World = GetWorld();
-    if (!World) return;
-
-    // Use the engine's built-in primitive shapes as obstacles
-    UStaticMesh* CubeMesh = LoadObject<UStaticMesh>(nullptr,
-        TEXT("/Engine/BasicShapes/Cube.Cube"));
-    UStaticMesh* SphereMesh = LoadObject<UStaticMesh>(nullptr,
-        TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-    UStaticMesh* CylinderMesh = LoadObject<UStaticMesh>(nullptr,
-        TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
-
-    // Create deterministic but varied obstacle placement
-    FRandomStream RNG(42); // Fixed seed for reproducibility
-
-    for (int32 i = 0; i < NumRockClusters; i++)
-    {
-        // Random position within arena bounds
-        float X = RNG.FRandRange(-ArenaRadius, ArenaRadius);
-        float Y = RNG.FRandRange(-ArenaRadius, ArenaRadius);
-        float Z = ArenaFloorZ + RNG.FRandRange(50.0f, 600.0f);
-
-        // Random rotation
-        FRotator Rot(RNG.FRandRange(-20.0f, 20.0f), RNG.FRandRange(0.0f, 360.0f), RNG.FRandRange(-15.0f, 15.0f));
-
-        // Random scale (large boulders and smaller rocks)
-        float BaseScale = RNG.FRandRange(1.5f, 5.0f);
-
-        // Slightly non-uniform scale for rock-like shapes
-        FVector Scale(
-            BaseScale * RNG.FRandRange(0.6f, 1.4f),
-            BaseScale * RNG.FRandRange(0.6f, 1.4f),
-            BaseScale * RNG.FRandRange(0.4f, 1.2f));
-
-        // Choose mesh shape
-        UStaticMesh* ChosenMesh;
-        int32 ShapeChoice = i % 3;
-        if (ShapeChoice == 0)      ChosenMesh = SphereMesh;   // Boulder
-        else if (ShapeChoice == 1) ChosenMesh = CubeMesh;     // Crate/Box
-        else                       ChosenMesh = CylinderMesh; // Pillar/Column
-
-        FString Name = FString::Printf(TEXT("Rock_Obstacle_%d"), i);
-        SpawnStaticMeshActor(ChosenMesh, FVector(X, Y, Z), Rot, Scale, Name);
-    }
-
-    // Add some larger structures as major hiding spots
-    // Big rock arch
-    SpawnStaticMeshActor(CubeMesh,
-        FVector(2500.0f, -2500.0f, ArenaFloorZ + 200.0f),
-        FRotator(35.0f, 20.0f, 0.0f),
-        FVector(8.0f, 3.0f, 6.0f),
-        TEXT("RockArch_1"));
-
-    SpawnStaticMeshActor(CubeMesh,
-        FVector(-3500.0f, 3500.0f, ArenaFloorZ + 150.0f),
-        FRotator(-20.0f, 60.0f, 10.0f),
-        FVector(6.0f, 4.0f, 7.0f),
-        TEXT("RockArch_2"));
-
-    // Tall rock pillars
-    SpawnStaticMeshActor(CylinderMesh,
-        FVector(0.0f, -5000.0f, ArenaFloorZ + 100.0f),
-        FRotator(5.0f, 0.0f, 0.0f),
-        FVector(2.0f, 2.0f, 12.0f),
-        TEXT("RockPillar_1"));
-
-    SpawnStaticMeshActor(CylinderMesh,
-        FVector(-6000.0f, 0.0f, ArenaFloorZ + 80.0f),
-        FRotator(-3.0f, 45.0f, 0.0f),
-        FVector(2.5f, 2.5f, 10.0f),
-        TEXT("RockPillar_2"));
+    // Disabled
 }
 
 // ─── Underwater Environment Actor ───────────────────────────────────────────
@@ -304,12 +264,14 @@ void AUnderwaterLevelSetup::SpawnEnvironmentActor()
     UWorld* World = GetWorld();
     if (!World) return;
 
-    // Check if one already exists in the level
     TArray<AActor*> Found;
     UGameplayStatics::GetAllActorsOfClass(World, AUnderwaterEnvironmentActor::StaticClass(), Found);
     if (Found.Num() > 0)
     {
-        UE_LOG(LogUnderwaterSim, Log, TEXT("  UnderwaterEnvironmentActor already exists — skipping."));
+        for (int32 i = 1; i < Found.Num(); ++i)
+        {
+            Found[i]->Destroy();
+        }
         return;
     }
 
@@ -321,12 +283,11 @@ void AUnderwaterLevelSetup::SpawnEnvironmentActor()
 
     if (EnvActor)
     {
-        EnvActor->WaterSurfaceZ = 0.0f;
+        EnvActor->WaterSurfaceZ = 810.0f;
         EnvActor->WaterDensity = 1025.0f;
         EnvActor->Turbidity = 0.4f;
         EnvActor->MaxVisualRangeMeters = 20.0f;
-        EnvActor->GlobalCurrentVelocity = FVector(0.15f, 0.08f, 0.0f);
-        UE_LOG(LogUnderwaterSim, Log, TEXT("  Spawned UnderwaterEnvironmentActor."));
+        EnvActor->GlobalCurrentVelocity = FVector::ZeroVector;
     }
 }
 
@@ -337,16 +298,41 @@ void AUnderwaterLevelSetup::SpawnDrones()
     UWorld* World = GetWorld();
     if (!World) return;
 
-    // Check if drones already exist (placed manually or by Blueprint)
     TArray<AActor*> ExistingDrones;
     UGameplayStatics::GetAllActorsOfClass(World, AUnderwaterDrone::StaticClass(), ExistingDrones);
-    if (ExistingDrones.Num() >= 2)
+
+    AUnderwaterDrone* FoundSeeker = nullptr;
+    AUnderwaterDrone* FoundHider = nullptr;
+
+    for (AActor* Actor : ExistingDrones)
     {
-        UE_LOG(LogUnderwaterSim, Log, TEXT("  Drones already exist (%d found) — skipping."), ExistingDrones.Num());
-        return;
+        AUnderwaterDrone* Drone = Cast<AUnderwaterDrone>(Actor);
+        if (!Drone) continue;
+
+        const FString Name = Drone->GetName();
+        if ((Drone->DroneRole == EDroneRole::Seeker || Name.Contains(TEXT("Seeker"))) && !FoundSeeker)
+        {
+            FoundSeeker = Drone;
+            FoundSeeker->DroneRole = EDroneRole::Seeker;
+            FoundSeeker->DroneID = 1;
+            FoundSeeker->SetActorLocation(FVector(800.0f, 800.0f, -500.0f));
+            FoundSeeker->SetActorRotation(FRotator(0.0f, -135.0f, 0.0f));
+        }
+        else if ((Drone->DroneRole == EDroneRole::Hider || Name.Contains(TEXT("Hider"))) && !FoundHider)
+        {
+            FoundHider = Drone;
+            FoundHider->DroneRole = EDroneRole::Hider;
+            FoundHider->DroneID = 2;
+            FoundHider->SetActorLocation(FVector(-800.0f, -800.0f, -700.0f));
+            FoundHider->SetActorRotation(FRotator(0.0f, 45.0f, 0.0f));
+        }
+        else
+        {
+            // Destroy duplicate drones
+            Drone->Destroy();
+        }
     }
 
-    // Try to spawn from Blueprints first (they have the visual mesh assigned)
     UClass* SeekerBP = LoadObject<UClass>(nullptr,
         TEXT("/Game/Blueprints/BP_SeekerDrone.BP_SeekerDrone_C"));
     UClass* HiderBP = LoadObject<UClass>(nullptr,
@@ -355,44 +341,30 @@ void AUnderwaterLevelSetup::SpawnDrones()
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    // Seeker Drone — near one edge of the arena
-    AUnderwaterDrone* Seeker = nullptr;
-    FVector SeekerLoc(3000.0f, 3000.0f, ArenaFloorZ + 1500.0f);
-
-    if (SeekerBP)
+    if (!FoundSeeker)
     {
-        Seeker = World->SpawnActor<AUnderwaterDrone>(SeekerBP, SeekerLoc, FRotator::ZeroRotator, Params);
-    }
-    else
-    {
-        Seeker = World->SpawnActor<AUnderwaterDrone>(AUnderwaterDrone::StaticClass(), SeekerLoc, FRotator::ZeroRotator, Params);
-    }
-
-    if (Seeker)
-    {
-        Seeker->DroneRole = EDroneRole::Seeker;
-        Seeker->DroneID = 1;
-        UE_LOG(LogUnderwaterSim, Log, TEXT("  Spawned SEEKER drone at (%.0f, %.0f, %.0f)"), SeekerLoc.X, SeekerLoc.Y, SeekerLoc.Z);
+        FVector SeekerLoc(800.0f, 800.0f, -500.0f);
+        FRotator SeekerRot(0.0f, -135.0f, 0.0f);
+        UClass* ClassToSpawn = SeekerBP ? SeekerBP : AUnderwaterDrone::StaticClass();
+        FoundSeeker = World->SpawnActor<AUnderwaterDrone>(ClassToSpawn, SeekerLoc, SeekerRot, Params);
+        if (FoundSeeker)
+        {
+            FoundSeeker->DroneRole = EDroneRole::Seeker;
+            FoundSeeker->DroneID = 1;
+        }
     }
 
-    // Hider Drone — opposite side of arena
-    AUnderwaterDrone* Hider = nullptr;
-    FVector HiderLoc(-3000.0f, -3000.0f, ArenaFloorZ + 1200.0f);
-
-    if (HiderBP)
+    if (!FoundHider)
     {
-        Hider = World->SpawnActor<AUnderwaterDrone>(HiderBP, HiderLoc, FRotator(0.0f, 180.0f, 0.0f), Params);
-    }
-    else
-    {
-        Hider = World->SpawnActor<AUnderwaterDrone>(AUnderwaterDrone::StaticClass(), HiderLoc, FRotator(0.0f, 180.0f, 0.0f), Params);
-    }
-
-    if (Hider)
-    {
-        Hider->DroneRole = EDroneRole::Hider;
-        Hider->DroneID = 2;
-        UE_LOG(LogUnderwaterSim, Log, TEXT("  Spawned HIDER drone at (%.0f, %.0f, %.0f)"), HiderLoc.X, HiderLoc.Y, HiderLoc.Z);
+        FVector HiderLoc(-800.0f, -800.0f, -700.0f);
+        FRotator HiderRot(0.0f, 45.0f, 0.0f);
+        UClass* ClassToSpawn = HiderBP ? HiderBP : AUnderwaterDrone::StaticClass();
+        FoundHider = World->SpawnActor<AUnderwaterDrone>(ClassToSpawn, HiderLoc, HiderRot, Params);
+        if (FoundHider)
+        {
+            FoundHider->DroneRole = EDroneRole::Hider;
+            FoundHider->DroneID = 2;
+        }
     }
 }
 
@@ -403,7 +375,6 @@ void AUnderwaterLevelSetup::ConfigureAtmosphere()
     UWorld* World = GetWorld();
     if (!World) return;
 
-    // ── Configure existing Exponential Height Fog (or spawn one) ──
     TArray<AActor*> FogActors;
     UGameplayStatics::GetAllActorsOfClass(World, AExponentialHeightFog::StaticClass(), FogActors);
 
@@ -425,38 +396,14 @@ void AUnderwaterLevelSetup::ConfigureAtmosphere()
         UExponentialHeightFogComponent* FogComp = Fog->FindComponentByClass<UExponentialHeightFogComponent>();
         if (FogComp)
         {
-            // Deep blue-green underwater fog
-            FogComp->SetFogDensity(0.05f);
+            FogComp->SetFogDensity(0.02f);
             FogComp->SetFogHeightFalloff(0.001f);
-            FogComp->SetFogInscatteringColor(FLinearColor(0.01f, 0.05f, 0.12f)); // Deep blue
+            FogComp->SetFogInscatteringColor(FLinearColor(0.01f, 0.06f, 0.14f));
             FogComp->SetDirectionalInscatteringColor(FLinearColor(0.0f, 0.08f, 0.15f));
-            FogComp->SetFogMaxOpacity(0.95f);
-            FogComp->SetStartDistance(100.0f);
-            FogComp->SetFogCutoffDistance(25000.0f);
+            FogComp->SetFogMaxOpacity(0.9f);
+            FogComp->SetStartDistance(200.0f);
+            FogComp->SetFogCutoffDistance(30000.0f);
             FogComp->SetVolumetricFog(true);
-
-            UE_LOG(LogUnderwaterSim, Log, TEXT("  Configured underwater fog atmosphere."));
-        }
-    }
-
-    // ── Dim the Directional Light for deep-water feel ──
-    TArray<AActor*> LightActors;
-    UGameplayStatics::GetAllActorsOfClass(World, ADirectionalLight::StaticClass(), LightActors);
-
-    for (AActor* LightActor : LightActors)
-    {
-        ADirectionalLight* DirLight = Cast<ADirectionalLight>(LightActor);
-        if (DirLight)
-        {
-            UDirectionalLightComponent* LightComp = DirLight->FindComponentByClass<UDirectionalLightComponent>();
-            if (LightComp)
-            {
-                // Reduce intensity and tint blue for underwater feel
-                LightComp->SetIntensity(2.0f); // Dimmer than default
-                LightComp->SetLightColor(FLinearColor(0.4f, 0.6f, 0.9f)); // Blue-ish
-                UE_LOG(LogUnderwaterSim, Log, TEXT("  Dimmed directional light for deep-water atmosphere."));
-            }
         }
     }
 }
-

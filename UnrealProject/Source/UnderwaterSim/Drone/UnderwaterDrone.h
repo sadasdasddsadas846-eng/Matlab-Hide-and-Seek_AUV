@@ -50,6 +50,9 @@ public:
     UStaticMeshComponent* DroneBody;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Drone")
+    UStaticMeshComponent* VisualMesh;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Drone")
     UAUVBuoyancyComponent* BuoyancyComp;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Drone|Camera")
@@ -123,9 +126,16 @@ protected:
 
 private:
     void SetupThrusters();
+    void ApplyMixedThrusterInputs();
 
     void InputSurge(float Value);
     void InputSway(float Value);
     void InputHeave(float Value);
     void InputYaw(float Value);
+    void InputLookUp(float Value);
+
+    float PendingSurge = 0.0f;
+    float PendingSway = 0.0f;
+    float PendingHeave = 0.0f;
+    float PendingYaw = 0.0f;
 };

@@ -37,17 +37,17 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup")
     bool bAutoPopulate = true;
 
-    /** Depth (negative Z in cm) of the arena floor center. */
+    /** Depth (negative Z in cm) of the arena floor center (matches Landscape at Z=-1250). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup")
-    float ArenaFloorZ = -5000.0f;
+    float ArenaFloorZ = -1250.0f;
 
     /** Scale multiplier for the terrain mesh. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup|Terrain")
-    float TerrainScale = 15.0f;
+    float TerrainScale = 10.0f;
 
     /** Scale multiplier for coral reef meshes. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup|Corals")
-    float CoralScale = 8.0f;
+    float CoralScale = 3.5f;
 
     /** Scale multiplier for the shipwreck. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup|Shipwreck")

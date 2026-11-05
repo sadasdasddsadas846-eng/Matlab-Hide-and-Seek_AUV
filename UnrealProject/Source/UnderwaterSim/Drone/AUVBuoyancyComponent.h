@@ -33,17 +33,17 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Buoyancy")
     float WaterDensity = 1025.0f;
 
-    /** Displaced volume of the body in m^3 (0.0118 gives slight positive buoyancy for 11.5kg drone) */
+    /** Displaced volume of the body in m^3 (0.01122 gives neutral buoyancy for 11.5kg drone) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Buoyancy")
-    float DisplacedVolume = 0.0118f;
+    float DisplacedVolume = 0.01122f;
 
     /** Mass of the drone in kg */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Buoyancy")
     float DroneMass = 11.5f;
 
-    /** Water surface Z coordinate in world space (cm) */
+    /** Water surface Z coordinate in world space (cm) — matches WaterBodyOcean at Z=810 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Buoyancy")
-    float WaterSurfaceZ = 0.0f;
+    float WaterSurfaceZ = 810.0f;
 
     // ── Drag Parameters ──
 
