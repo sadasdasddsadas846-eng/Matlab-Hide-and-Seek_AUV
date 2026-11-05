@@ -49,5 +49,15 @@ __ExternalObjects__/
 *.asv
 *.m~
 
-# Local engine copy
-UnrealProject 5.8/
+# Large raw photogrammetry scan folders (>100MB)
+**/Content/Environments/coral-block-lighthouse/
+**/Content/Environments/underwater-terrain-agisoftnature/
+**/Content/Environments/wreck-of-cruise-ship-saudi-red-sea/
+**/Content/Environments/Corals/CoralReef.fbx
+**/Content/Environments/Corals/CoralReef.uasset
+**/Content/Environments/Corals/CoralReef.fbm/
+**/Content/Environments/Corals/CoralReef_fbm/
+**/Content/Environments/Terrain/model.fbx
+**/Content/Environments/Terrain/model.uasset
+**/Content/Environments/Terrain/model1.uasset
+**/AutomationTool/
