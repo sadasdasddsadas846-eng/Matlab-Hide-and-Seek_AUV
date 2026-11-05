@@ -146,6 +146,25 @@ void AUnderwaterDrone::BeginPlay()
         VisualMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -15.0f));
         VisualMesh->SetVisibility(true, false);
         VisualMesh->SetHiddenInGame(false, false);
+
+        if (DroneRole == EDroneRole::Hider || GetName().Contains(TEXT("Hider")))
+        {
+            UMaterialInterface* BlueMat = LoadObject<UMaterialInterface>(nullptr,
+                TEXT("/Game/Environments/MarineLife/M_HiderSub_Blue.M_HiderSub_Blue"));
+            if (BlueMat)
+            {
+                const int32 NumMats = VisualMesh->GetNumMaterials();
+                for (int32 i = 0; i < NumMats; ++i)
+                {
+                    UMaterialInterface* CurMat = VisualMesh->GetMaterial(i);
+                    const FString MatName = CurMat ? CurMat->GetName() : TEXT("");
+                    if (MatName != TEXT("Glass") && MatName != TEXT("Black_Metal") && MatName != TEXT("Light"))
+                    {
+                        VisualMesh->SetMaterial(i, BlueMat);
+                    }
+                }
+            }
+        }
     }
 
     UE_LOG(LogUnderwaterSim, Log, TEXT("Drone %d spawned as %s at Z=%.1f"),
