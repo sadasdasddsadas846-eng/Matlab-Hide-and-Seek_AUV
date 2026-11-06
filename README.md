@@ -1,7 +1,3 @@
-# DENGAN ATAS NAMA ALLAH YANG MAHA PENGASIH LAGI MAHA PENYAYANG
-# KITA SELESAIKAN MODEL INI
-## GOKIL LU NDRONG
-
 # Underwater Drone Hide and Seek Simulation (Unreal Engine 5 + ROS 2)
 
 Proyek simulasi skenario taktis **Hide-and-Seek** antara dua Autonomous Underwater Vehicles (AUVs) menggunakan **Unreal Engine 5** untuk simulasi fisik/visual dan **ROS 2** untuk algoritma navigasi, persepsi, dan kontrol otonom.
