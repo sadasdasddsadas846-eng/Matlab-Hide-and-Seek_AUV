@@ -31,16 +31,12 @@ Saved/
 DerivedDataCache/
 *.VC.db
 *.opendb
-__ExternalActors__/
-__ExternalObjects__/
 
 # Ignore intermediate in all subfolders
 */Binaries/
 */Intermediate/
 */Saved/
 */DerivedDataCache/
-*/__ExternalActors__/
-*/__ExternalObjects__/
 
 # Gazebo
 *.log
@@ -49,7 +45,8 @@ __ExternalObjects__/
 *.asv
 *.m~
 
-# Large raw photogrammetry scan folders (>100MB)
+# Files exceeding GitHub's 100 MB single-file hard limit
+coral-block-lighthouse/source/sketchfabTemp.obj.fbx
 **/Content/Environments/coral-block-lighthouse/
 **/Content/Environments/underwater-terrain-agisoftnature/
 **/Content/Environments/wreck-of-cruise-ship-saudi-red-sea/
