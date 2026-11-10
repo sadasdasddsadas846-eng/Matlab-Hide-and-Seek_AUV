@@ -123,9 +123,17 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    virtual void OnConstruction(const FTransform& Transform) override;
 
 private:
     void SetupThrusters();
+
+public:
+    /** Apply the MBARI Doc Ricketts ROV visual mesh + role-based colors (Seeker = Yellow, Hider = Blue) */
+    UFUNCTION(BlueprintCallable, Category = "Drone|Visual")
+    void ApplyROVVisual();
+
+private:
     void ApplyMixedThrusterInputs();
 
     void InputSurge(float Value);

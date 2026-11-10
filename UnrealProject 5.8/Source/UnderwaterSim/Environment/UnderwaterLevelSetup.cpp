@@ -477,24 +477,9 @@ void AUnderwaterLevelSetup::SpawnDrones()
         }
     }
 
-    if (FoundHider && FoundHider->VisualMesh)
-    {
-        UMaterialInterface* BlueMat = LoadObject<UMaterialInterface>(nullptr,
-            TEXT("/Game/Environments/MarineLife/M_HiderSub_Blue.M_HiderSub_Blue"));
-        if (BlueMat)
-        {
-            const int32 NumMats = FoundHider->VisualMesh->GetNumMaterials();
-            for (int32 i = 0; i < NumMats; ++i)
-            {
-                UMaterialInterface* CurMat = FoundHider->VisualMesh->GetMaterial(i);
-                const FString MatName = CurMat ? CurMat->GetName() : TEXT("");
-                if (MatName != TEXT("Glass") && MatName != TEXT("Black_Metal") && MatName != TEXT("Light"))
-                {
-                    FoundHider->VisualMesh->SetMaterial(i, BlueMat);
-                }
-            }
-        }
-    }
+    // Re-apply Doc Ricketts ROV visuals now that roles are assigned (Seeker = Yellow, Hider = Blue)
+    if (FoundSeeker) FoundSeeker->ApplyROVVisual();
+    if (FoundHider)  FoundHider->ApplyROVVisual();
 }
 
 // ─── Atmosphere (Fog + Light) ───────────────────────────────────────────────

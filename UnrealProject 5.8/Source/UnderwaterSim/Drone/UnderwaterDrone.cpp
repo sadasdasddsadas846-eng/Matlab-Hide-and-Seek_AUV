@@ -7,6 +7,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
 #include "InputCoreTypes.h"
 #include "UnderwaterSim.h"
@@ -43,19 +44,20 @@ AUnderwaterDrone::AUnderwaterDrone()
     DroneBody->BodyInstance.bLockXRotation = true;
     DroneBody->BodyInstance.bLockYRotation = true;
 
-    // ── Visual Mesh (Submarine 3D model, upright with Roll = +90) ──
+    // ── Visual Mesh (MBARI Doc Ricketts ROV 3D model) ──
     VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
     VisualMesh->SetupAttachment(DroneBody);
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> SubMeshFinder(
-        TEXT("/Game/Drones/SubmarineModel/_Submarine2._Submarine2"));
-    if (SubMeshFinder.Succeeded())
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> ROVMeshFinder(
+        TEXT("/Game/Drones/DocRickettsROV/SM_DocRickettsROV.SM_DocRickettsROV"));
+    if (ROVMeshFinder.Succeeded())
     {
-        VisualMesh->SetStaticMesh(SubMeshFinder.Object);
+        VisualMesh->SetStaticMesh(ROVMeshFinder.Object);
     }
-    // _Submarine2 has local UP along -Y; Roll=+90 rotates -Y to +Z (World Up)
-    VisualMesh->SetRelativeRotation(FRotator(0.0f, 0.0f, 90.0f));
-    VisualMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -15.0f));
-    VisualMesh->SetRelativeScale3D(FVector(1.5f));
+    // SM_DocRickettsROV: +Z up, front (robotic arms) along +Y. Yaw=-90 turns +Y into pawn forward (+X).
+    // Mesh bounds: length ~373 cm, height ~208 cm, origin at the skid bottom -> scale 0.5 and centre on DroneBody.
+    VisualMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+    VisualMesh->SetRelativeLocation(FVector(-2.4f, 1.85f, -52.0f));
+    VisualMesh->SetRelativeScale3D(FVector(0.5f));
     VisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     VisualMesh->SetVisibility(true, false);
     VisualMesh->SetHiddenInGame(false, false);
@@ -142,29 +144,7 @@ void AUnderwaterDrone::BeginPlay()
 
     if (VisualMesh)
     {
-        VisualMesh->SetRelativeRotation(FRotator(0.0f, 0.0f, 90.0f));
-        VisualMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -15.0f));
-        VisualMesh->SetVisibility(true, false);
-        VisualMesh->SetHiddenInGame(false, false);
-
-        if (DroneRole == EDroneRole::Hider || GetName().Contains(TEXT("Hider")))
-        {
-            UMaterialInterface* BlueMat = LoadObject<UMaterialInterface>(nullptr,
-                TEXT("/Game/Environments/MarineLife/M_HiderSub_Blue.M_HiderSub_Blue"));
-            if (BlueMat)
-            {
-                const int32 NumMats = VisualMesh->GetNumMaterials();
-                for (int32 i = 0; i < NumMats; ++i)
-                {
-                    UMaterialInterface* CurMat = VisualMesh->GetMaterial(i);
-                    const FString MatName = CurMat ? CurMat->GetName() : TEXT("");
-                    if (MatName != TEXT("Glass") && MatName != TEXT("Black_Metal") && MatName != TEXT("Light"))
-                    {
-                        VisualMesh->SetMaterial(i, BlueMat);
-                    }
-                }
-            }
-        }
+        ApplyROVVisual();
     }
 
     UE_LOG(LogUnderwaterSim, Log, TEXT("Drone %d spawned as %s at Z=%.1f"),
@@ -172,6 +152,48 @@ void AUnderwaterDrone::BeginPlay()
            DroneRole == EDroneRole::Seeker ? TEXT("SEEKER") :
            DroneRole == EDroneRole::Hider ? TEXT("HIDER") : TEXT("NEUTRAL"),
            GetActorLocation().Z);
+}
+
+void AUnderwaterDrone::OnConstruction(const FTransform& Transform)
+{
+    Super::OnConstruction(Transform);
+    ApplyROVVisual();
+}
+
+void AUnderwaterDrone::ApplyROVVisual()
+{
+    if (!VisualMesh) return;
+
+    UStaticMesh* ROVMesh = LoadObject<UStaticMesh>(nullptr,
+        TEXT("/Game/Drones/DocRickettsROV/SM_DocRickettsROV.SM_DocRickettsROV"));
+    if (ROVMesh && VisualMesh->GetStaticMesh() != ROVMesh)
+    {
+        VisualMesh->SetStaticMesh(ROVMesh);
+    }
+
+    VisualMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+    VisualMesh->SetRelativeLocation(FVector(-2.4f, 1.85f, -52.0f));
+    VisualMesh->SetRelativeScale3D(FVector(0.5f));
+    VisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    VisualMesh->SetVisibility(true, false);
+    VisualMesh->SetHiddenInGame(false, false);
+
+    // Reset to mesh default materials (Seeker = original Yellow float + frame)
+    VisualMesh->EmptyOverrideMaterials();
+
+    const bool bIsHider = (DroneRole == EDroneRole::Hider) || GetName().Contains(TEXT("Hider"));
+    if (bIsHider)
+    {
+        UMaterialInterface* FloatBlue = LoadObject<UMaterialInterface>(nullptr,
+            TEXT("/Game/Drones/DocRickettsROV/Materials/M_ROV_Float_Blue.M_ROV_Float_Blue"));
+        UMaterialInterface* FrameBlue = LoadObject<UMaterialInterface>(nullptr,
+            TEXT("/Game/Drones/DocRickettsROV/Materials/M_ROV_Frame_Blue.M_ROV_Frame_Blue"));
+
+        const int32 FloatIdx = VisualMesh->GetMaterialIndex(TEXT("float"));
+        const int32 FrameIdx = VisualMesh->GetMaterialIndex(TEXT("doc_ricketts_frame"));
+        if (FloatBlue && FloatIdx != INDEX_NONE) VisualMesh->SetMaterial(FloatIdx, FloatBlue);
+        if (FrameBlue && FrameIdx != INDEX_NONE) VisualMesh->SetMaterial(FrameIdx, FrameBlue);
+    }
 }
 
 void AUnderwaterDrone::Tick(float DeltaTime)
