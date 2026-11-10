@@ -6,24 +6,32 @@
 **Development Environment:** Windows 11 + WSL2 + Ubuntu 24.04 LTS  
 **ROS Distribution:** ROS 2 Jazzy  
 **Programming Language:** Python  
-**Package:** `underwater_navigation`
+**Build System:** ament  
+**Build Type:** ament_python  
+**Package:** `underwater_navigation`  
+**Workspace:** `~/ros2_ws`
 
 ---
 
 ## 1. Project Overview
 
-Tugas Member 2 berfokus pada pengembangan sistem navigasi dan kontrol gerakan Autonomous Underwater Vehicle (AUV) menggunakan ROS 2.
+Member 2 bertanggung jawab mengembangkan sistem navigasi dan kontrol gerakan Autonomous Underwater Vehicle (AUV) menggunakan ROS 2.
+
+Pengembangan difokuskan pada komunikasi perintah gerakan, sistem kontrol berbasis feedback, pemrosesan informasi sensor, serta algoritma navigasi yang nantinya akan diintegrasikan dengan simulasi Unreal Engine 5.
 
 Ruang lingkup pekerjaan meliputi:
 
-- Pembuatan ROS 2 workspace dan package.
+- Setup ROS 2 workspace dan package.
 - Pengembangan motion command untuk mengontrol gerakan AUV.
 - Implementasi PID Controller dan sistem kontrol gerakan 6-DOF.
 - Integrasi data odometry dan IMU.
 - Waypoint Navigation.
 - Path Planning menggunakan algoritma A* atau RRT*.
-- Obstacle Avoidance.
-- Integrasi sistem navigasi dengan Unreal Engine 5.
+- Reactive Obstacle Avoidance.
+- Integrasi target position dari Member 3.
+- Integrasi sistem navigasi ROS 2 dengan Unreal Engine 5.
+
+Pengembangan dilakukan secara bertahap, dimulai dari persiapan environment hingga implementasi algoritma kontrol dan navigasi.
 
 ## 2. Development Environment Setup
 
@@ -31,7 +39,9 @@ Lingkungan pengembangan telah berhasil disiapkan menggunakan Windows Subsystem f
 
 | Komponen | Konfigurasi |
 |---|---|
-| Operating System | Ubuntu 24.04.4 LTS |
+| Host Operating System | Windows 11 |
+| Virtualization Environment | WSL2 |
+| Linux Distribution | Ubuntu 24.04.4 LTS |
 | WSL Version | WSL 2 |
 | ROS Distribution | ROS 2 Jazzy |
 | Build System | ament |
@@ -43,22 +53,22 @@ Lingkungan pengembangan telah berhasil disiapkan menggunakan Windows Subsystem f
 
 Tahapan instalasi yang telah dilakukan:
 
-1. Memastikan Ubuntu 24.04 berjalan pada WSL2.
-2. Mengaktifkan Ubuntu Universe repository.
-3. Menambahkan ROS 2 APT Repository.
-4. Menginstal ROS 2 Jazzy Desktop.
-5. Menginstal ROS Development Tools.
-6. Mengaktifkan ROS 2 environment.
+1. Memastikan Ubuntu 24.04.4 LTS berjalan menggunakan WSL2.
+2. Menambahkan ROS 2 APT Repository.
+3. Menginstal ROS 2 Jazzy Desktop.
+4. Menginstal ROS Development Tools.
+5. Mengonfigurasi ROS 2 environment.
+6. Mengaktifkan environment secara otomatis melalui `.bashrc`.
 
-Perintah untuk mengaktifkan ROS 2:
+Perintah untuk mengaktifkan ROS 2 environment:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 ```
 
-Environment juga telah ditambahkan ke `.bashrc` agar aktif otomatis ketika terminal Ubuntu dibuka.
+Konfigurasi tersebut telah ditambahkan ke `.bashrc` agar ROS 2 aktif secara otomatis ketika terminal Ubuntu dibuka.
 
-Verifikasi instalasi:
+Verifikasi instalasi dilakukan menggunakan:
 
 ```bash
 printenv ROS_DISTRO
@@ -70,7 +80,7 @@ Output:
 jazzy
 ```
 
-ROS 2 CLI juga telah diuji menggunakan:
+ROS 2 CLI juga telah berhasil diuji menggunakan:
 
 ```bash
 ros2 --help
@@ -78,7 +88,7 @@ ros2 --help
 
 ### 2.2 ROS 2 Communication Test
 
-Pengujian komunikasi dasar dilakukan menggunakan dua node bawaan ROS 2:
+Pengujian komunikasi dasar dilakukan menggunakan dua node bawaan ROS 2.
 
 **Terminal 1 – Talker**
 
@@ -92,13 +102,13 @@ ros2 run demo_nodes_cpp talker
 ros2 run demo_nodes_py listener
 ```
 
-Hasil pengujian menunjukkan bahwa Listener berhasil menerima pesan yang diterbitkan oleh Talker melalui topic `/chatter`.
+Hasil pengujian menunjukkan bahwa node Listener berhasil menerima pesan yang diterbitkan oleh node Talker melalui topic `/chatter`.
 
 Pengujian ini memvalidasi komunikasi dasar Publisher dan Subscriber pada ROS 2.
 
 ## 3. Workspace and Package Creation
 
-Workspace ROS 2 telah berhasil dibuat.
+Workspace ROS 2 berhasil dibuat pada filesystem Linux WSL.
 
 Lokasi workspace:
 
@@ -115,7 +125,7 @@ cd ~/ros2_ws
 
 ### 3.1 Package Creation
 
-Package utama untuk pengembangan navigasi AUV:
+Package utama untuk pengembangan navigasi AUV diberi nama:
 
 ```text
 underwater_navigation
@@ -131,18 +141,18 @@ ros2 pkg create underwater_navigation \
 --dependencies rclpy geometry_msgs nav_msgs sensor_msgs
 ```
 
-Dependensi yang digunakan:
+Dependensi package:
 
 | Dependency | Fungsi |
 |---|---|
 | `rclpy` | ROS 2 Python Client Library |
-| `geometry_msgs` | Pesan geometri, termasuk Twist |
-| `nav_msgs` | Pesan navigasi, termasuk Odometry |
-| `sensor_msgs` | Pesan sensor, termasuk IMU |
+| `geometry_msgs` | Pesan geometri, termasuk `Twist` |
+| `nav_msgs` | Pesan navigasi, termasuk `Odometry` |
+| `sensor_msgs` | Pesan sensor, termasuk `Imu` |
 
 ### 3.2 Current Directory Structure
 
-Struktur package saat ini:
+Struktur package setelah implementasi Motion Command:
 
 ```text
 ros2_ws/
@@ -158,14 +168,25 @@ ros2_ws/
         │   ├── test_flake8.py
         │   └── test_pep257.py
         └── underwater_navigation/
-            └── __init__.py
+            ├── __init__.py
+            └── motion_command.py
 ```
 
-Package telah berhasil dibuat tanpa error.
+Package berhasil dibuat dan dibangun menggunakan `colcon`.
 
-## 4. ROS 2 Workspace Access
+Perintah build:
 
-Workspace disimpan di filesystem Linux WSL, bukan di direktori Windows `/mnt/c`.
+```bash
+cd ~/ros2_ws
+
+colcon build --packages-select underwater_navigation
+
+source install/setup.bash
+```
+
+## 4. Workspace Access and Development Workflow
+
+Workspace disimpan di filesystem Linux WSL, bukan langsung di direktori Windows `/mnt/c`.
 
 Lokasi workspace:
 
@@ -179,13 +200,13 @@ Akses melalui Windows File Explorer:
 \\wsl$\Ubuntu\home\akbar\ros2_ws
 ```
 
-Perintah untuk kembali ke workspace setelah membuka terminal Ubuntu:
+Perintah untuk memasuki workspace:
 
 ```bash
 cd ~/ros2_ws
 ```
 
-Perintah untuk masuk langsung ke package:
+Perintah untuk masuk ke package:
 
 ```bash
 cd ~/ros2_ws/src/underwater_navigation
@@ -197,17 +218,33 @@ Perintah untuk membuka folder aktif menggunakan VS Code:
 code .
 ```
 
-## 5. Current Progress
+Workflow dasar setelah mengubah kode:
+
+```bash
+cd ~/ros2_ws
+
+colcon build --packages-select underwater_navigation
+
+source install/setup.bash
+```
+
+Kemudian node dapat dijalankan menggunakan:
+
+```bash
+ros2 run underwater_navigation motion_command
+```
+
+## 5. Current Development Progress
 
 | No. | Task | Status |
-|---|---|---|
+|---:|---|---|
 | 1 | WSL2 and Ubuntu Setup | Completed |
 | 2 | ROS 2 Jazzy Installation | Completed |
 | 3 | ROS 2 Environment Configuration | Completed |
 | 4 | ROS 2 Talker-Listener Test | Completed |
 | 5 | ROS 2 Workspace Creation | Completed |
 | 6 | `underwater_navigation` Package Creation | Completed |
-| 7 | Motion Command Node | Not Started |
+| 7 | Motion Command Node | Completed (Basic) |
 | 8 | PID Controller / 6-DOF Control | Not Started |
 | 9 | Odometry and IMU Integration | Not Started |
 | 10 | Waypoint Navigation | Not Started |
@@ -216,82 +253,216 @@ code .
 | 13 | Unreal Engine 5 Integration | Not Started |
 | 14 | ROS 2 Launch and Bringup | Not Started |
 
+### 5.1 Motion Command Implementation
+
+Node pertama dalam package `underwater_navigation` telah berhasil dikembangkan menggunakan Python dan `rclpy`.
+
+File:
+
+```text
+underwater_navigation/motion_command.py
+```
+
+Node name:
+
+```text
+motion_command
+```
+
+Node ini menggunakan Publisher ROS 2 dengan konfigurasi:
+
+| Parameter | Value |
+|---|---|
+| Topic | `/cmd_vel` |
+| Message Type | `geometry_msgs/msg/Twist` |
+| Publisher Queue Depth | 10 |
+| Input Method | Keyboard |
+| Node Name | `motion_command` |
+
+Publisher dibuat menggunakan:
+
+```python
+self.publisher_ = self.create_publisher(
+    Twist,
+    '/cmd_vel',
+    10
+)
+```
+
+### 5.2 Keyboard Motion Commands
+
+Sistem perintah gerakan dasar telah diimplementasikan menggunakan input keyboard pada terminal.
+
+Mapping perintah:
+
+| Key | Motion Command | Twist Component |
+|---|---|---|
+| `w` | Forward | `linear.x = 0.5` |
+| `s` | Backward | `linear.x = -0.5` |
+| `a` | Left | `linear.y = 0.5` |
+| `d` | Right | `linear.y = -0.5` |
+| `q` | Up | `linear.z = 0.5` |
+| `e` | Down | `linear.z = -0.5` |
+| `x` | Stop | All components = 0.0 |
+
+Perintah dikirim melalui fungsi `publish_command()` dengan menggunakan message type `Twist`.
+
+Saat ini, input keyboard masih menggunakan metode terminal line input, sehingga pengguna perlu menekan Enter setelah memasukkan perintah.
+
+### 5.3 Motion Command Testing
+
+Pengujian dilakukan dengan menjalankan node:
+
+```bash
+ros2 run underwater_navigation motion_command
+```
+
+Kemudian memantau pesan yang diterbitkan menggunakan:
+
+```bash
+ros2 topic echo /cmd_vel
+```
+
+Node juga telah diverifikasi menggunakan:
+
+```bash
+ros2 node list
+```
+
+dan:
+
+```bash
+ros2 node info /motion_command
+```
+
+Hasil pengujian menunjukkan bahwa:
+
+- Node `/motion_command` berhasil terdaftar di ROS 2.
+- Publisher `/cmd_vel` berhasil dibuat.
+- Pesan `geometry_msgs/msg/Twist` berhasil diterbitkan.
+- Perintah `w` berhasil menghasilkan nilai `linear.x = 0.5`.
+- Perintah `s` berhasil menghasilkan nilai `linear.x = -0.5`.
+- Perintah `x` berhasil menghasilkan seluruh komponen gerakan bernilai `0.0`.
+
+Dengan demikian, komunikasi dasar motion command melalui ROS 2 telah berhasil diimplementasikan.
+
+**Current limitation:**
+
+Motion command masih berupa pengiriman nilai kecepatan melalui topic ROS 2. Belum terdapat sistem penerima yang mengubah pesan tersebut menjadi gerakan aktual AUV. Integrasi dengan plant/model AUV dan Unreal Engine 5 belum dilakukan.
+
 ## 6. Next Development Plan
 
-Pengembangan selanjutnya akan dilakukan secara bertahap.
+Pengembangan selanjutnya dibagi menjadi beberapa tahap.
 
-### Phase 1 – Motion Command
+### Phase 1 – Motion Command Development
 
-Membuat node `motion_command.py` untuk menerbitkan perintah gerakan AUV melalui topic:
+**Status: Basic Implementation Completed**
 
-```text
-/cmd_vel
-```
+Pekerjaan yang telah dilakukan:
 
-Gerakan yang direncanakan:
+- Membuat `motion_command.py`.
+- Membuat Publisher `/cmd_vel`.
+- Menggunakan `geometry_msgs/msg/Twist`.
+- Mengimplementasikan keyboard command untuk enam arah gerakan dan stop.
+- Menguji publikasi pesan menggunakan ROS 2 CLI.
 
-- Forward
-- Backward
-- Left
-- Right
-- Up
-- Down
-- Stop
+Pengembangan lanjutan:
 
-Menggunakan message type:
-
-```text
-geometry_msgs/msg/Twist
-```
+- Memvalidasi seluruh arah gerakan.
+- Menambahkan mekanisme command timeout atau watchdog.
+- Menyesuaikan konvensi koordinat gerakan dengan sistem koordinat AUV dan Unreal Engine.
 
 ### Phase 2 – Motion Control
 
-Mengembangkan sistem kontrol gerakan AUV, meliputi:
+**Status: Not Started**
+
+Mengembangkan sistem kontrol gerakan AUV yang mencakup:
 
 - PID Controller.
-- Kontrol gerakan 6-DOF.
+- Pengembangan kontrol gerakan 6-DOF.
 - Pengaturan kecepatan linear dan angular.
-- Pengujian respons terhadap target gerakan.
+- Pengujian respons sistem terhadap target gerakan.
+- Evaluasi performa kontrol menggunakan parameter seperti settling time, overshoot, dan steady-state error.
+
+Implementasi akan dimulai dari kontrol satu sumbu sebelum dikembangkan menjadi kontrol multi-axis.
 
 ### Phase 3 – Sensor Integration
 
-Mengintegrasikan data sensor melalui topic:
+**Status: Not Started**
+
+Mengintegrasikan data sensor sebagai feedback untuk sistem kontrol dan navigasi.
+
+Topic yang direncanakan:
 
 ```text
 /odom
 /imu/data
 ```
 
-Data tersebut digunakan sebagai masukan sistem navigasi dan kontrol.
+Data yang digunakan meliputi:
+
+- Posisi dan orientasi AUV.
+- Kecepatan linear dan angular.
+- Data percepatan dan kecepatan sudut dari IMU.
+
+Data sensor akan digunakan sebagai masukan feedback bagi sistem kontrol dan navigasi.
 
 ### Phase 4 – Navigation and Planning
 
-Mengembangkan:
+**Status: Not Started**
+
+Mengembangkan sistem navigasi AUV yang meliputi:
 
 - Waypoint Navigation.
-- A* atau RRT* Path Planning.
-- Reactive Obstacle Avoidance.
+- Path Planning menggunakan A* atau RRT*.
+- Reactive Obstacle Avoidance menggunakan Artificial Potential Field.
 - Integrasi target position dari Member 3.
+- Pengembangan trajectory untuk kebutuhan navigasi dan hide-and-seek.
 
 ### Phase 5 – Simulation Integration
 
-Menghubungkan sistem navigasi ROS 2 dengan Unreal Engine 5.
+**Status: Not Started**
 
-Integrasi mencakup komunikasi perintah gerakan, data sensor, odometry, dan informasi target.
+Mengintegrasikan sistem navigasi ROS 2 dengan Unreal Engine 5.
+
+Lingkup integrasi:
+
+- Pengiriman perintah gerakan dari ROS 2 ke simulasi.
+- Pertukaran data posisi dan orientasi AUV.
+- Integrasi data sensor dan odometry.
+- Penyesuaian koordinat antara Unreal Engine dan ROS 2.
+- Integrasi informasi target dari komponen sistem lainnya.
+
+### Phase 6 – Launch and Bringup
+
+**Status: Not Started**
+
+Membuat konfigurasi ROS 2 launch untuk menjalankan komponen navigasi secara terintegrasi.
+
+Lingkup pekerjaan:
+
+- Membuat package `underwater_bringup`.
+- Menyusun launch file.
+- Menjalankan node motion control dan navigation secara bersamaan.
+- Mengatur parameter sistem.
+- Melakukan pengujian integrasi keseluruhan.
 
 ---
 
 ## 7. Important Notes
 
 - Seluruh pengembangan ROS 2 dilakukan melalui Ubuntu WSL2.
-- Jangan menjalankan perintah `ros2` langsung dari PowerShell Windows kecuali sudah dikonfigurasi secara khusus.
-- Workspace disimpan di filesystem Linux untuk mendukung performa build ROS 2.
-- ROS 2 Jazzy harus aktif sebelum menjalankan node. Aktivasi otomatis sudah dikonfigurasi melalui `.bashrc`.
-- Pengembangan algoritma navigasi belum dimulai. Tahap yang telah diselesaikan masih berupa persiapan environment, pengujian komunikasi, dan pembuatan package.
-- Integrasi Unreal Engine 5 dan sistem kontrol AUV akan dilakukan setelah komponen navigasi dasar dikembangkan.
+- Perintah ROS 2 dijalankan melalui terminal Ubuntu, bukan PowerShell Windows secara langsung.
+- Workspace disimpan di filesystem Linux WSL untuk mendukung workflow pengembangan ROS 2.
+- ROS 2 Jazzy telah dikonfigurasi agar aktif otomatis melalui `.bashrc`.
+- Setiap perubahan kode perlu diikuti proses build ulang menggunakan `colcon`.
+- Motion command yang telah dibuat masih merupakan pengujian komunikasi dasar, belum menjadi kontrol AUV yang terintegrasi dengan simulasi.
+- PID Controller, integrasi sensor, waypoint navigation, path planning, dan obstacle avoidance belum diimplementasikan.
+- Integrasi Unreal Engine 5 masih menjadi pekerjaan lanjutan.
+- Konvensi koordinat dan antarmuka komunikasi antarkomponen perlu disepakati bersama anggota tim sebelum integrasi sistem dilakukan.
 
 ---
 
-**Last Updated:** 8 November 2026  
-**Current Milestone:** ROS 2 Environment Setup and Package Initialization  
-**Next Milestone:** Motion Command Node Development
+**Last Updated:** 10 November 2026  
+**Current Milestone:** ROS 2 Environment Setup, Package Initialization, and Basic Motion Command Implementation  
+**Next Milestone:** Motion Control and PID Controller Development
