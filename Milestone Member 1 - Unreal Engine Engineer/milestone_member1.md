@@ -162,3 +162,4 @@ Untuk menyelesaikan integrasi penuh dengan **Member 2 (Akbar – Navigation)** d
 **Last Updated:** 10 November 2026  
 **Current Milestone:** Ultra-HD Bikini Bottom Arena, 6-DOF BlueROV2 Physics, Simulated Sensor Suite, and C++ ROS 2 Bridge Core Completed  
 **Next Milestone:** Live Windows-to-WSL2 ROS 2 Socket Bridge Integration with Member 2 (`/cmd_vel` & `/odom`) and In-Game HUD
+
